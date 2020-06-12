@@ -8,6 +8,7 @@ import (
 	"github.com/alexedwards/argon2id"
 	"github.com/ryakosh/wishlist/lib"
 	"github.com/ryakosh/wishlist/lib/bindings"
+	"github.com/ryakosh/wishlist/lib/views"
 )
 
 var (
@@ -42,7 +43,7 @@ type User struct {
 }
 
 // CreateUser is used to add a User to our database
-func CreateUser(b *bindings.CuUser) (*lib.CuUserView, error) {
+func CreateUser(b *bindings.CuUser) (*views.CuUser, error) {
 	var user *User
 
 	lib.DB.Where("id = ?", b.ID).Or("email = ?", b.Email).First(&user)
@@ -56,7 +57,7 @@ func CreateUser(b *bindings.CuUser) (*lib.CuUserView, error) {
 		}
 
 		lib.DB.Create(&user)
-		return &lib.CuUserView{
+		return &views.CuUser{
 			ID:        user.ID,
 			Email:     user.Email,
 			FirstName: user.FirstName,
@@ -68,12 +69,12 @@ func CreateUser(b *bindings.CuUser) (*lib.CuUserView, error) {
 }
 
 // ReadUser is used to get information about a User in our database
-func ReadUser(b *bindings.RUser) (*lib.RdUserView, error) {
+func ReadUser(b *bindings.RUser) (*views.RdUser, error) {
 	var user *User
 
 	lib.DB.Select("id", "first_name", "last_name").Where("id = ?", b.ID).First(&user)
 	if user != nil {
-		return &lib.RdUserView{
+		return &views.RdUser{
 			ID:        user.ID,
 			FirstName: user.FirstName,
 			LastName:  user.LastName,
@@ -84,7 +85,7 @@ func ReadUser(b *bindings.RUser) (*lib.RdUserView, error) {
 }
 
 // UpdateUser is used to update a User in our database
-func UpdateUser(b *bindings.CuUser, authedUser string) *lib.CuUserView {
+func UpdateUser(b *bindings.CuUser, authedUser string) *views.CuUser {
 	user := &User{
 		ID: authedUser,
 	}
@@ -95,7 +96,7 @@ func UpdateUser(b *bindings.CuUser, authedUser string) *lib.CuUserView {
 		LastName:  b.LastName,
 	})
 
-	return &lib.CuUserView{
+	return &vies.CuUser{
 		ID:        authedUser,
 		FirstName: b.FirstName,
 		LastName:  b.LastName,
@@ -103,14 +104,14 @@ func UpdateUser(b *bindings.CuUser, authedUser string) *lib.CuUserView {
 }
 
 // DeleteUser is used to delete a User from our database
-func DeleteUser(authedUser string) *lib.RdUserView {
+func DeleteUser(authedUser string) *views.RdUser {
 	user := &User{
 		ID: authedUser,
 	}
 
 	lib.DB.Delete(user)
 
-	return &lib.RdUserView{
+	return &views.RdUser{
 		ID: authedUser,
 	}
 }
