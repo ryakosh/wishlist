@@ -96,7 +96,7 @@ func UpdateUser(b *bindings.CuUser, authedUser string) *views.CuUser {
 		LastName:  b.LastName,
 	})
 
-	return &vies.CuUser{
+	return &views.CuUser{
 		ID:        authedUser,
 		FirstName: b.FirstName,
 		LastName:  b.LastName,
