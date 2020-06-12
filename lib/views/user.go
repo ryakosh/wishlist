@@ -8,8 +8,8 @@ type CuUser struct {
 	LastName  string `json:"last_name"`
 }
 
-// RdUser is used to respond clients when reading and deleting User
-type RdUser struct {
+// RUser is used to respond clients when reading User
+type RUser struct {
 	ID        string `json:"username"`
 	FirstName string `json:"first_name"`
 	LastName  string `json:"last_name"`

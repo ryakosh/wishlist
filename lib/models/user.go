@@ -17,6 +17,9 @@ var (
 
 	// ErrUserNotFound is returned when User does not exist in the database
 	ErrUserNotFound = errors.New("error: User not found")
+
+	// ErrUserNotAuthorized is returned when User is not authorized to access a resource
+	ErrUserNotAuthorized = errors.New("error: User not authorized")
 )
 
 var argonConfig = &argon2id.Params{
@@ -29,17 +32,17 @@ var argonConfig = &argon2id.Params{
 
 // User represents a user in the app
 type User struct {
-	ID                string     `json:"username" gorm:"type:varchar(64)"`
-	Email             string     `json:"email" gorm:"varchar(254);unique"`
-	IsEmailVerified   bool       `json:"is_email_verfied"`
-	Password          string     `json:"password" gorm:"varchar(256)"`
-	FirstName         string     `json:"first_name" gorm:"type:varchar(64)"`
-	LastName          string     `json:"last_name" gorm:"type:varchar(64)"`
-	Wishes            []Wish     `json:"wishes"`
-	FulfilledWishes   []Wish     `json:"fulfilled_wishes" gorm:"foreignkey:FulfilledBy"`
-	WantFulfillWishes []Wish     `json:"want_fulfill_wishes" gorm:"many2many:userswant_wishes"`
-	CreatedAt         *time.Time `json:"created_at"`
-	UpdatedAt         *time.Time `json:"updated_at"`
+	ID                string `gorm:"type:varchar(64)"`
+	Email             string `gorm:"varchar(254);unique"`
+	IsEmailVerified   bool
+	Password          string `gorm:"varchar(256)"`
+	FirstName         string `gorm:"type:varchar(64)"`
+	LastName          string `gorm:"type:varchar(64)"`
+	Wishes            []Wish
+	FulfilledWishes   []Wish `gorm:"foreignkey:FulfilledBy"`
+	WantFulfillWishes []Wish `gorm:"many2many:userswant_wishes"`
+	CreatedAt         *time.Time
+	UpdatedAt         *time.Time
 }
 
 // CreateUser is used to add a User to our database
@@ -69,12 +72,12 @@ func CreateUser(b *bindings.CuUser) (*views.CuUser, error) {
 }
 
 // ReadUser is used to get information about a User in our database
-func ReadUser(b *bindings.RUser) (*views.RdUser, error) {
+func ReadUser(b *bindings.RUser) (*views.RUser, error) {
 	var user *User
 
 	lib.DB.Select("id", "first_name", "last_name").Where("id = ?", b.ID).First(&user)
 	if user != nil {
-		return &views.RdUser{
+		return &views.RUser{
 			ID:        user.ID,
 			FirstName: user.FirstName,
 			LastName:  user.LastName,
@@ -104,16 +107,12 @@ func UpdateUser(b *bindings.CuUser, authedUser string) *views.CuUser {
 }
 
 // DeleteUser is used to delete a User from our database
-func DeleteUser(authedUser string) *views.RdUser {
+func DeleteUser(authedUser string) {
 	user := &User{
 		ID: authedUser,
 	}
 
 	lib.DB.Delete(user)
-
-	return &views.RdUser{
-		ID: authedUser,
-	}
 }
 
 func genPasswordHash(password string) string {

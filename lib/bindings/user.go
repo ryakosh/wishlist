@@ -11,7 +11,7 @@ type CuUser struct {
 	LastName  string `json:"last_name" binding:"max=64"`
 }
 
-// RUser is used to Read and Delete User models
+// RUser is used to Read User models
 type RUser struct {
 	ID string `json:"username" binding:"required,username,max=64"`
 }
