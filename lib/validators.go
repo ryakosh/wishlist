@@ -1,4 +1,4 @@
-package main
+package lib
 
 import (
 	"errors"
@@ -12,7 +12,7 @@ var (
 	rgxUsername = regexp.MustCompile("^[a-z0-9_-]+$")
 )
 
-func Username(fl validator.FieldLevel) bool {
+func username(fl validator.FieldLevel) bool {
 	if uname, ok := fl.Field().Interface().(string); ok {
 		if rgxUsername.MatchString(uname) {
 			return true
@@ -23,7 +23,7 @@ func Username(fl validator.FieldLevel) bool {
 
 func init() {
 	if v, ok := binding.Validator.Engine().(*validator.Validate); ok {
-		v.RegisterValidation("username", Username)
+		v.RegisterValidation("username", username)
 	} else {
 		panic(errors.New("Error: Could not register validator"))
 	}
