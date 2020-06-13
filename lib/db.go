@@ -5,12 +5,14 @@ import (
 	"os"
 
 	"github.com/jinzhu/gorm"
-	_ "github.com/jinzhu/gorm/dialects/postgres"
+	_ "github.com/jinzhu/gorm/dialects/postgres" // Used for it's side effect
 )
 
 var (
 	dbEnv string
-	DB    *gorm.DB
+
+	// DB is used to communicate with the database
+	DB *gorm.DB
 )
 
 func init() {
