@@ -16,6 +16,12 @@ type RUser struct {
 	ID string `json:"username" binding:"required,username,max=64"`
 }
 
+// LoginUser is used for user authentication
+type LoginUser struct {
+	ID       string `json:"username" binding:"required,username,max=64"`
+	Password string `json:"password" binding:"required,min=8,max=256"`
+}
+
 // Canonicalize UserBinding's fields to be inserted in database
 func (b *CuUser) Canonicalize() {
 	b.FirstName = strings.TrimSpace(b.FirstName)

@@ -2,7 +2,7 @@ package models
 
 import (
 	"errors"
-	"fmt"
+	"log"
 	"net/http"
 	"time"
 
@@ -31,6 +31,10 @@ var (
 
 	// ErrUserNotAuthorized is returned when User is not authorized to access a resource
 	ErrUserNotAuthorized = errors.New("error: User not authorized")
+
+	// ErrUnmOrPwdIncorrect is returned when the provided username or
+	// password are incorrect
+	ErrUnmOrPwdIncorrect = errors.New("error: Username or password is incorrect")
 )
 
 var argonConfig = &argon2id.Params{
@@ -126,13 +130,34 @@ func DeleteUser(authedUser string) {
 	lib.DB.Delete(user)
 }
 
+// LoginUser is used for user authentication
+func LoginUser(b *bindings.LoginUser) (string, error) {
+	var user *User
+
+	lib.DB.Select("id,password").Where("id = ?", b.ID).First(user)
+	if user != nil && verifyPassword(b.Password, user.Password) {
+		return lib.Encode(user.ID), nil
+	}
+
+	return "", ErrUnmOrPwdIncorrect
+}
+
 func genPasswordHash(password string) string {
 	hash, err := argon2id.CreateHash(password, argonConfig)
 	if err != nil {
-		panic(fmt.Sprintf("error: Could not generate password's hash\n\treason: %s", err))
+		log.Panicf("error: Could not generate password's hash\n\treason: %s", err)
 	}
 
 	return hash
+}
+
+func verifyPassword(password string, hash string) bool {
+	isMatch, err := argon2id.ComparePasswordAndHash(password, hash)
+	if err != nil {
+		log.Panicf("error: Could not verify password\n\treason: %s", err)
+	}
+
+	return isMatch
 }
 
 // Authenticate is a middleware that is used to authenticate users
