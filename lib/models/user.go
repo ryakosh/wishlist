@@ -3,12 +3,23 @@ package models
 import (
 	"errors"
 	"fmt"
+	"net/http"
 	"time"
 
 	"github.com/alexedwards/argon2id"
+	"github.com/gin-gonic/gin"
 	"github.com/ryakosh/wishlist/lib"
 	"github.com/ryakosh/wishlist/lib/bindings"
 	"github.com/ryakosh/wishlist/lib/views"
+)
+
+const (
+	// TokenCookieKey is a cookie key used for authentication
+	TokenCookieKey = "token"
+
+	// UserKey is a gin context keystore key used to indicate
+	// that a user is authenticated
+	UserKey = "user"
 )
 
 var (
@@ -122,6 +133,44 @@ func genPasswordHash(password string) string {
 	}
 
 	return hash
+}
+
+// Authenticate is a middleware that is used to authenticate users
+// on certain endpoints using cookies, it's not enforcing authentication
+// on endpoints that it's beeing used so endpoints should decide whether
+// they require authentication or not, however it aborts requests if
+// the provided token is malformed, expired or not valid
+func Authenticate() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		token, err := c.Cookie(TokenCookieKey)
+		if err != nil {
+			c.Next()
+		} else {
+			claims, valid, err := lib.Decode(token)
+			if err == nil && valid {
+				var user *User
+				sub := (*claims)["sub"]
+
+				lib.DB.Where("id = ?", sub).First(user)
+				if user != nil {
+					c.Set(UserKey, sub)
+					c.Next()
+				}
+			} else if lib.IsMalformed(err) {
+				c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
+					"error": "Token malformed",
+				})
+			} else if lib.HasExpired(err) {
+				c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
+					"error": "Token expired",
+				})
+			} else {
+				c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
+					"error": "Token is invalid",
+				})
+			}
+		}
+	}
 }
 
 func init() {
