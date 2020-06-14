@@ -52,6 +52,7 @@ func Decode(tokenString string) (*jwt.MapClaims, bool, error) {
 	return nil, false, errors.New("error: Token is invalid")
 }
 
+// IsMalformed reports whether err represents a token is malformed error
 func IsMalformed(err error) bool {
 	if ve, ok := err.(*jwt.ValidationError); ok {
 		return ve.Errors&jwt.ValidationErrorMalformed != 0
@@ -60,6 +61,7 @@ func IsMalformed(err error) bool {
 	return false
 }
 
+// HasExpired reports whether err represents a token has expired error
 func HasExpired(err error) bool {
 	if ve, ok := err.(*jwt.ValidationError); ok {
 		return ve.Errors&jwt.ValidationErrorExpired != 0
