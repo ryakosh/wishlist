@@ -2,6 +2,7 @@ package lib
 
 import (
 	"crypto/rsa"
+	"errors"
 	"io/ioutil"
 	"log"
 	"time"
@@ -35,16 +36,36 @@ func Encode(sub string) string {
 }
 
 // Decode is used to decode JWT tokens
-func Decode(tokenString string) (*jwt.MapClaims, error) {
+func Decode(tokenString string) (*jwt.MapClaims, bool, error) {
 	token, err := jwt.Parse(tokenString, func(t *jwt.Token) (interface{}, error) {
 		return publicKey, nil
 	})
 
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 
-	return token.Claims.(*jwt.MapClaims), nil
+	if claims, ok := token.Claims.(*jwt.MapClaims); ok {
+		return claims, token.Valid, nil
+	}
+
+	return nil, false, errors.New("error: Token is invalid")
+}
+
+func IsMalformed(err error) bool {
+	if ve, ok := err.(*jwt.ValidationError); ok {
+		return ve.Errors&jwt.ValidationErrorMalformed != 0
+	}
+
+	return false
+}
+
+func HasExpired(err error) bool {
+	if ve, ok := err.(*jwt.ValidationError); ok {
+		return ve.Errors&jwt.ValidationErrorExpired != 0
+	}
+
+	return false
 }
 
 func init() {
