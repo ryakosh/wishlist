@@ -1,9 +1,15 @@
 package views
 
-// CuUser is used to respond clients when creating and updating User
-type CuUser struct {
+// CUser is used to respond clients when creating User
+type CUser struct {
 	ID        string `json:"username"`
 	Email     string `json:"email"`
+	FirstName string `json:"first_name"`
+	LastName  string `json:"last_name"`
+}
+
+// UUser is used to respond clients when updating User
+type UUser struct {
 	FirstName string `json:"first_name"`
 	LastName  string `json:"last_name"`
 }

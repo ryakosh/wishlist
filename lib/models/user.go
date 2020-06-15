@@ -61,12 +61,12 @@ type User struct {
 }
 
 // CreateUser is used to add a User to our database
-func CreateUser(b *bindings.CuUser) (*views.CuUser, error) {
-	var user *User
+func CreateUser(b *bindings.CUser) (*views.CUser, error) {
+	var user User
 
-	lib.DB.Where("id = ?", b.ID).Or("email = ?", b.Email).First(&user)
-	if user == nil {
-		user = &User{
+	db := lib.DB.Where("id = ?", b.ID).Or("email = ?", b.Email).First(&user)
+	if db.RecordNotFound() {
+		user = User{
 			ID:        b.ID,
 			Email:     b.Email,
 			Password:  genPasswordHash(b.Password),
@@ -75,7 +75,7 @@ func CreateUser(b *bindings.CuUser) (*views.CuUser, error) {
 		}
 
 		lib.DB.Create(&user)
-		return &views.CuUser{
+		return &views.CUser{
 			ID:        user.ID,
 			Email:     user.Email,
 			FirstName: user.FirstName,
@@ -88,10 +88,10 @@ func CreateUser(b *bindings.CuUser) (*views.CuUser, error) {
 
 // ReadUser is used to get information about a User in our database
 func ReadUser(b *bindings.RUser) (*views.RUser, error) {
-	var user *User
+	var user User
 
-	lib.DB.Select("id", "first_name", "last_name").Where("id = ?", b.ID).First(&user)
-	if user != nil {
+	db := lib.DB.Select("id,first_name,last_name").Where("id = ?", b.ID).First(&user)
+	if !db.RecordNotFound() {
 		return &views.RUser{
 			ID:        user.ID,
 			FirstName: user.FirstName,
@@ -103,19 +103,17 @@ func ReadUser(b *bindings.RUser) (*views.RUser, error) {
 }
 
 // UpdateUser is used to update a User in our database
-func UpdateUser(b *bindings.CuUser, authedUser string) *views.CuUser {
-	user := &User{
+func UpdateUser(b *bindings.UUser, authedUser string) *views.UUser {
+	user := User{
 		ID: authedUser,
 	}
 
-	lib.DB.Model(&user).Select("password,first_name,last_name").Updates(&User{
-		Password:  genPasswordHash(b.Password),
+	lib.DB.Model(&user).Select("first_name", "last_name").Updates(&User{
 		FirstName: b.FirstName,
 		LastName:  b.LastName,
 	})
 
-	return &views.CuUser{
-		ID:        authedUser,
+	return &views.UUser{
 		FirstName: b.FirstName,
 		LastName:  b.LastName,
 	}
@@ -132,10 +130,10 @@ func DeleteUser(authedUser string) {
 
 // LoginUser is used for user authentication
 func LoginUser(b *bindings.LoginUser) (string, error) {
-	var user *User
+	var user User
 
-	lib.DB.Select("id,password").Where("id = ?", b.ID).First(user)
-	if user != nil && verifyPassword(b.Password, user.Password) {
+	db := lib.DB.Select("id,password").Where("id = ?", b.ID).First(&user)
+	if !db.RecordNotFound() && verifyPassword(b.Password, user.Password) {
 		return lib.Encode(user.ID), nil
 	}
 
@@ -173,13 +171,17 @@ func Authenticate() gin.HandlerFunc {
 		} else {
 			claims, valid, err := lib.Decode(token)
 			if err == nil && valid {
-				var user *User
-				sub := (*claims)["sub"]
+				var user User
+				sub := claims["sub"]
 
-				lib.DB.Where("id = ?", sub).First(user)
-				if user != nil {
+				db := lib.DB.Where("id = ?", sub).First(&user)
+				if !db.RecordNotFound() {
 					c.Set(UserKey, sub)
 					c.Next()
+				} else {
+					c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
+						"error": "User does not exist",
+					})
 				}
 			} else if lib.IsMalformed(err) {
 				c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{

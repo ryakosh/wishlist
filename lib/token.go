@@ -36,7 +36,7 @@ func Encode(sub string) string {
 }
 
 // Decode is used to decode JWT tokens
-func Decode(tokenString string) (*jwt.MapClaims, bool, error) {
+func Decode(tokenString string) (jwt.MapClaims, bool, error) {
 	token, err := jwt.Parse(tokenString, func(t *jwt.Token) (interface{}, error) {
 		return publicKey, nil
 	})
@@ -45,7 +45,7 @@ func Decode(tokenString string) (*jwt.MapClaims, bool, error) {
 		return nil, false, err
 	}
 
-	if claims, ok := token.Claims.(*jwt.MapClaims); ok {
+	if claims, ok := token.Claims.(jwt.MapClaims); ok {
 		return claims, token.Valid, nil
 	}
 
@@ -71,7 +71,7 @@ func HasExpired(err error) bool {
 }
 
 func init() {
-	prv, err := ioutil.ReadFile("../secrets/private.pem")
+	prv, err := ioutil.ReadFile("./secrets/private.pem")
 	if err != nil {
 		log.Fatalf("error: Could not read './secrets/private.pem' file\n\treason: %s", err)
 	}
@@ -81,7 +81,7 @@ func init() {
 		log.Fatalf("error: Could not parse './secrets/private.pem'\n\treason: %s", err)
 	}
 
-	pub, err := ioutil.ReadFile("../secrets/public.pem")
+	pub, err := ioutil.ReadFile("./secrets/public.pem")
 	if err != nil {
 		log.Fatalf("error: Could not read './secrets/public.pem' file\n\treason: %s", err)
 	}

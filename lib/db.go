@@ -27,5 +27,4 @@ func init() {
 	if err != nil {
 		log.Fatalf("error: Could not create or connect to the database\n\treason: %s", err)
 	}
-	defer DB.Close()
 }
