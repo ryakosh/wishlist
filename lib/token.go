@@ -15,6 +15,20 @@ var (
 	publicKey  *rsa.PublicKey
 )
 
+var (
+	// ErrTokenIsMalformed is returned when the provided token for
+	// validation is malformed
+	ErrTokenIsMalformed = errors.New("Token is malformed")
+
+	// ErrTokenHasExpired is returned when the provided token for
+	// validation has expired
+	ErrTokenHasExpired = errors.New("Token has expired")
+
+	// ErrTokenIsInvalid is returned when the provided token for
+	// validation is invalid
+	ErrTokenIsInvalid = errors.New("Token is invalid")
+)
+
 // Encode is used to encode JWT tokens
 func Encode(sub string) string {
 	now := time.Now().UTC()

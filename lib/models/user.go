@@ -24,17 +24,17 @@ const (
 
 var (
 	// ErrUserExists is returned when User already exists in the database
-	ErrUserExists = errors.New("error: User already exists")
+	ErrUserExists = errors.New("User already exists")
 
 	// ErrUserNotFound is returned when User does not exist in the database
-	ErrUserNotFound = errors.New("error: User not found")
+	ErrUserNotFound = errors.New("User not found")
 
 	// ErrUserNotAuthorized is returned when User is not authorized to access a resource
-	ErrUserNotAuthorized = errors.New("error: User not authorized")
+	ErrUserNotAuthorized = errors.New("User not authorized")
 
 	// ErrUnmOrPwdIncorrect is returned when the provided username or
 	// password are incorrect
-	ErrUnmOrPwdIncorrect = errors.New("error: Username or password is incorrect")
+	ErrUnmOrPwdIncorrect = errors.New("Username or password is incorrect")
 )
 
 var argonConfig = &argon2id.Params{
@@ -90,7 +90,7 @@ func CreateUser(b *bindings.CUser) (*views.CUser, error) {
 func ReadUser(b *bindings.RUser) (*views.RUser, error) {
 	var user User
 
-	db := lib.DB.Select("id,first_name,last_name").Where("id = ?", b.ID).First(&user)
+	db := lib.DB.Select("id", "first_name", "last_name").Where("id = ?", b.ID).First(&user)
 	if !db.RecordNotFound() {
 		return &views.RUser{
 			ID:        user.ID,
@@ -132,7 +132,7 @@ func DeleteUser(authedUser string) {
 func LoginUser(b *bindings.LoginUser) (string, error) {
 	var user User
 
-	db := lib.DB.Select("id,password").Where("id = ?", b.ID).First(&user)
+	db := lib.DB.Select("id", "password").Where("id = ?", b.ID).First(&user)
 	if !db.RecordNotFound() && verifyPassword(b.Password, user.Password) {
 		return lib.Encode(user.ID), nil
 	}
@@ -168,34 +168,36 @@ func Authenticate() gin.HandlerFunc {
 		token, err := c.Cookie(TokenCookieKey)
 		if err != nil {
 			c.Next()
-		} else {
-			claims, valid, err := lib.Decode(token)
-			if err == nil && valid {
-				var user User
-				sub := claims["sub"]
+			return
+		}
 
-				db := lib.DB.Where("id = ?", sub).First(&user)
-				if !db.RecordNotFound() {
-					c.Set(UserKey, sub)
-					c.Next()
-				} else {
-					c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
-						"error": "User does not exist",
-					})
-				}
-			} else if lib.IsMalformed(err) {
-				c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
-					"error": "Token malformed",
-				})
-			} else if lib.HasExpired(err) {
-				c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
-					"error": "Token expired",
-				})
-			} else {
-				c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
-					"error": "Token is invalid",
-				})
+		claims, valid, err := lib.Decode(token)
+		if err == nil && valid {
+			var user User
+			sub := claims["sub"]
+
+			db := lib.DB.Select("id").Where("id = ?", sub).First(&user)
+			if !db.RecordNotFound() {
+				c.Set(UserKey, sub)
+				c.Next()
+				return
 			}
+
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
+				"error": ErrUserNotFound.Error(),
+			})
+		} else if lib.IsMalformed(err) {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
+				"error": lib.ErrTokenIsMalformed.Error(),
+			})
+		} else if lib.HasExpired(err) {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
+				"error": lib.ErrTokenHasExpired.Error(),
+			})
+		} else {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
+				"error": lib.ErrTokenHasExpired.Error(),
+			})
 		}
 	}
 }

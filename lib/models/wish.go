@@ -10,7 +10,7 @@ import (
 )
 
 // ErrWishNotFound is returned when Wish does not exist in the database
-var ErrWishNotFound = errors.New("error: Wish not found")
+var ErrWishNotFound = errors.New("Wish not found")
 
 // Wish represents a user's wish to buy something, do something etc.
 type Wish struct {
@@ -27,7 +27,7 @@ type Wish struct {
 
 // CreateWish is used to add a Wish to our database
 func CreateWish(b *bindings.CWish, authedUser string) *views.CWish {
-	wish := &Wish{
+	wish := Wish{
 		UserID:      authedUser,
 		Name:        b.Name,
 		Description: b.Description,
@@ -35,7 +35,7 @@ func CreateWish(b *bindings.CWish, authedUser string) *views.CWish {
 		Image:       b.Image,
 	}
 
-	lib.DB.Create(wish)
+	lib.DB.Create(&wish)
 
 	return &views.CWish{
 		ID:          wish.ID,
@@ -48,11 +48,11 @@ func CreateWish(b *bindings.CWish, authedUser string) *views.CWish {
 
 // ReadWish is used to get information about a Wish in our database
 func ReadWish(b *bindings.RdWish) (*views.RWish, error) {
-	var wish *Wish
+	var wish Wish
 
-	lib.DB.First(&wish, b.ID)
+	db := lib.DB.Omit("fulfilled_by", "created_at", "updated_at").First(&wish, b.ID)
 
-	if wish != nil {
+	if !db.RecordNotFound() {
 		return &views.RWish{
 			ID:          wish.ID,
 			UserID:      wish.UserID,
@@ -67,12 +67,12 @@ func ReadWish(b *bindings.RdWish) (*views.RWish, error) {
 
 // UpdateWish is used to update a Wish in our database
 func UpdateWish(b *bindings.UWish, authedUser string) (*views.UWish, error) {
-	var wish *Wish
+	var wish Wish
 
-	lib.DB.First(&wish, b.ID)
-	if wish != nil {
+	db := lib.DB.Select("id", "user_id").First(&wish, b.ID)
+	if !db.RecordNotFound() {
 		if wish.UserID == authedUser {
-			lib.DB.Model(wish).Select("name,description,link,image,fulfilled_by").Updates(&Wish{
+			lib.DB.Model(&wish).Select("name", "description", "link", "image", "fulfilled_by").Updates(&Wish{
 				Name:        b.Name,
 				Description: b.Description,
 				Link:        b.Link,
@@ -98,10 +98,10 @@ func UpdateWish(b *bindings.UWish, authedUser string) (*views.UWish, error) {
 
 // DeleteWish is used to delete a Wish from our database
 func DeleteWish(b *bindings.RdWish, authedUser string) error {
-	var wish *Wish
+	var wish Wish
 
-	lib.DB.Select("id,user_id").First(&wish, b.ID)
-	if wish != nil {
+	db := lib.DB.Select("id", "user_id").First(&wish, b.ID)
+	if !db.RecordNotFound() {
 		if wish.UserID == authedUser {
 			lib.DB.Delete(wish)
 			return nil
