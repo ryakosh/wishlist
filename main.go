@@ -6,20 +6,18 @@ import (
 	"github.com/ryakosh/wishlist/routes"
 )
 
-func main() {
-	r := router()
+var r *gin.Engine
 
+func main() {
 	r.Run(":8080")
 }
 
-func router() *gin.Engine {
-	r := gin.Default()
+func init() {
+	r = gin.Default()
 
 	r.POST("/login", routes.LoginUser)
 	r.POST("/users", routes.CreateUser)
 	r.GET("/users", routes.ReadUser)
 	r.PUT("/users", models.Authenticate(), routes.UpdateUser)
 	r.DELETE("/users", models.Authenticate(), routes.DeleteUser)
-
-	return r
 }
