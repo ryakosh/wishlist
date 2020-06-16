@@ -6,8 +6,6 @@ import (
 	"github.com/ryakosh/wishlist/routes"
 )
 
-// TODO: DRY body binding and error handling
-
 func main() {
 	r := router()
 

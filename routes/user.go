@@ -13,11 +13,7 @@ import (
 func LoginUser(c *gin.Context) { // TODO: Don't forget about CSRF attacks
 	var b bindings.LoginUser
 
-	if err := c.ShouldBindJSON(&b); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Could not bind the provided json",
-		})
-
+	if ok := bindJSON(c, &b); !ok {
 		return
 	}
 
@@ -41,11 +37,7 @@ func LoginUser(c *gin.Context) { // TODO: Don't forget about CSRF attacks
 func CreateUser(c *gin.Context) {
 	var b bindings.CUser
 
-	if err := c.ShouldBindJSON(&b); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Could not bind the provided json",
-		})
-
+	if ok := bindJSON(c, &b); !ok {
 		return
 	}
 
@@ -64,11 +56,7 @@ func CreateUser(c *gin.Context) {
 func ReadUser(c *gin.Context) {
 	var b bindings.RUser
 
-	if err := c.ShouldBindJSON(&b); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Could not bind the provided json",
-		})
-
+	if ok := bindJSON(c, &b); !ok {
 		return
 	}
 
@@ -96,12 +84,7 @@ func UpdateUser(c *gin.Context) {
 		return
 	}
 
-	if err := c.ShouldBindJSON(&b); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Could not bind the provided json",
-			"err":   err.Error(),
-		})
-
+	if ok := bindJSON(c, &b); !ok {
 		return
 	}
 
@@ -114,7 +97,7 @@ func DeleteUser(c *gin.Context) {
 	authedUser, ok := c.Get(models.UserKey)
 	if !ok {
 		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": models.ErrUserNotAuthorized,
+			"error": models.ErrUserNotAuthorized.Error(),
 		})
 
 		return
