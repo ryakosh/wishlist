@@ -16,8 +16,9 @@ func init() {
 	r = gin.Default()
 
 	r.POST("/login", routes.LoginUser)
-	r.POST("/users", routes.CreateUser)
-	r.GET("/users", routes.ReadUser)
-	r.PUT("/users", models.Authenticate(), routes.UpdateUser)
-	r.DELETE("/users", models.Authenticate(), routes.DeleteUser)
+	users := r.Group("/users")
+	users.POST("", routes.CreateUser)
+	users.GET("", routes.ReadUser)
+	users.PUT("", models.Authenticate(), routes.UpdateUser)
+	users.DELETE("", models.Authenticate(), routes.DeleteUser)
 }
