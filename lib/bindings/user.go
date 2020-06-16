@@ -15,11 +15,6 @@ type UUser struct {
 	LastName  string `json:"last_name" binding:"max=64"`
 }
 
-// RUser is used to read user's general information
-type RUser struct {
-	ID string `json:"username" binding:"required,username,max=64"`
-}
-
 // LoginUser is used for user authentication
 type LoginUser struct {
 	ID       string `json:"username" binding:"required,username,max=64"`

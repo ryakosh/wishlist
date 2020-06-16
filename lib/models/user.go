@@ -87,10 +87,10 @@ func CreateUser(b *bindings.CUser) (*views.CUser, error) {
 }
 
 // ReadUser is used to get general information about a user in the database
-func ReadUser(b *bindings.RUser) (*views.RUser, error) {
+func ReadUser(id string) (*views.RUser, error) {
 	var user User
 
-	db := lib.DB.Select("id", "first_name", "last_name").Where("id = ?", b.ID).First(&user)
+	db := lib.DB.Select("id, first_name, last_name").Where("id = ?", id).First(&user)
 	if !db.RecordNotFound() {
 		return &views.RUser{
 			ID:        user.ID,
@@ -108,7 +108,7 @@ func UpdateUser(b *bindings.UUser, authedUser string) *views.UUser {
 		ID: authedUser,
 	}
 
-	lib.DB.Model(&user).Select("first_name", "last_name").Updates(&User{
+	lib.DB.Model(&user).Updates(&User{
 		FirstName: b.FirstName,
 		LastName:  b.LastName,
 	})
@@ -132,7 +132,7 @@ func DeleteUser(authedUser string) {
 func LoginUser(b *bindings.LoginUser) (string, error) {
 	var user User
 
-	db := lib.DB.Select("id", "password").Where("id = ?", b.ID).First(&user)
+	db := lib.DB.Select("id, password").Where("id = ?", b.ID).First(&user)
 	if !db.RecordNotFound() && verifyPassword(b.Password, user.Password) {
 		return lib.Encode(user.ID), nil
 	}

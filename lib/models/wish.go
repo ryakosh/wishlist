@@ -50,7 +50,7 @@ func CreateWish(b *bindings.CWish, authedUser string) *views.CWish {
 func ReadWish(b *bindings.RdWish) (*views.RWish, error) {
 	var wish Wish
 
-	db := lib.DB.Omit("fulfilled_by", "created_at", "updated_at").First(&wish, b.ID)
+	db := lib.DB.Omit("fulfilled_by, created_at, updated_at").First(&wish, b.ID)
 
 	if !db.RecordNotFound() {
 		return &views.RWish{
@@ -69,10 +69,10 @@ func ReadWish(b *bindings.RdWish) (*views.RWish, error) {
 func UpdateWish(id uint, b *bindings.UWish, authedUser string) (*views.UWish, error) {
 	var wish Wish
 
-	db := lib.DB.Select("id", "user_id").First(&wish, id)
+	db := lib.DB.Select("id, user_id").First(&wish, id)
 	if !db.RecordNotFound() {
 		if wish.UserID == authedUser {
-			lib.DB.Model(&wish).Select("name", "description", "link", "image").Updates(&Wish{
+			lib.DB.Model(&wish).Updates(&Wish{
 				Name:        b.Name,
 				Description: b.Description,
 				Link:        b.Link,
@@ -98,7 +98,7 @@ func UpdateWish(id uint, b *bindings.UWish, authedUser string) (*views.UWish, er
 func DeleteWish(b *bindings.RdWish, authedUser string) error {
 	var wish Wish
 
-	db := lib.DB.Select("id", "user_id").First(&wish, b.ID)
+	db := lib.DB.Select("id, user_id").First(&wish, b.ID)
 	if !db.RecordNotFound() {
 		if wish.UserID == authedUser {
 			lib.DB.Delete(wish)

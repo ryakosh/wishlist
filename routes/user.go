@@ -54,13 +54,9 @@ func CreateUser(c *gin.Context) {
 
 // ReadUser is a route hander that is used to get general information about a user
 func ReadUser(c *gin.Context) {
-	var b bindings.RUser
+	id := c.Param("id")
 
-	if ok := bindJSON(c, &b); !ok {
-		return
-	}
-
-	view, err := models.ReadUser(&b)
+	view, err := models.ReadUser(id)
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"error": err.Error(),

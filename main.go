@@ -18,7 +18,7 @@ func init() {
 	r.POST("/login", routes.LoginUser)
 	users := r.Group("/users")
 	users.POST("", routes.CreateUser)
-	users.GET("", routes.ReadUser)
+	users.GET("/:id", routes.ReadUser)
 	users.PUT("", models.Authenticate(), routes.UpdateUser)
 	users.DELETE("", models.Authenticate(), routes.DeleteUser)
 }
