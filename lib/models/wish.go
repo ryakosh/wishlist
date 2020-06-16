@@ -25,7 +25,7 @@ type Wish struct {
 	UpdatedAt   *time.Time
 }
 
-// CreateWish is used to add a Wish to our database
+// CreateWish is used to add a wish to the database
 func CreateWish(b *bindings.CWish, authedUser string) *views.CWish {
 	wish := Wish{
 		UserID:      authedUser,
@@ -46,7 +46,7 @@ func CreateWish(b *bindings.CWish, authedUser string) *views.CWish {
 	}
 }
 
-// ReadWish is used to get information about a Wish in our database
+// ReadWish is used to get general information about a wish in the database
 func ReadWish(b *bindings.RdWish) (*views.RWish, error) {
 	var wish Wish
 
@@ -65,28 +65,26 @@ func ReadWish(b *bindings.RdWish) (*views.RWish, error) {
 	return nil, ErrWishNotFound
 }
 
-// UpdateWish is used to update a Wish in our database
-func UpdateWish(b *bindings.UWish, authedUser string) (*views.UWish, error) {
+// UpdateWish is used to update wish's general information in the database
+func UpdateWish(id uint, b *bindings.UWish, authedUser string) (*views.UWish, error) {
 	var wish Wish
 
-	db := lib.DB.Select("id", "user_id").First(&wish, b.ID)
+	db := lib.DB.Select("id", "user_id").First(&wish, id)
 	if !db.RecordNotFound() {
 		if wish.UserID == authedUser {
-			lib.DB.Model(&wish).Select("name", "description", "link", "image", "fulfilled_by").Updates(&Wish{
+			lib.DB.Model(&wish).Select("name", "description", "link", "image").Updates(&Wish{
 				Name:        b.Name,
 				Description: b.Description,
 				Link:        b.Link,
 				Image:       b.Image,
-				FulfilledBy: b.FulfilledBy,
 			})
 
 			return &views.UWish{
-				ID:          b.ID,
+				ID:          id,
 				Name:        b.Name,
 				Description: b.Description,
 				Link:        b.Link,
 				Image:       b.Image,
-				FulfilledBy: b.FulfilledBy,
 			}, nil
 		}
 
@@ -96,7 +94,7 @@ func UpdateWish(b *bindings.UWish, authedUser string) (*views.UWish, error) {
 	return nil, ErrWishNotFound
 }
 
-// DeleteWish is used to delete a Wish from our database
+// DeleteWish is used to delete a wish from the database
 func DeleteWish(b *bindings.RdWish, authedUser string) error {
 	var wish Wish
 

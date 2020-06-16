@@ -1,8 +1,6 @@
 package bindings
 
-import "strings"
-
-// CUser is used to Create User models
+// CUser is used to create/register a new user
 type CUser struct {
 	ID        string `json:"username" binding:"required,username,max=64"`
 	Email     string `json:"email" binding:"required,email"`
@@ -11,13 +9,13 @@ type CUser struct {
 	LastName  string `json:"last_name" binding:"max=64"`
 }
 
-// UUser is used to Update User models
+// UUser is used to update user's general information
 type UUser struct {
 	FirstName string `json:"first_name" binding:"max=64"`
 	LastName  string `json:"last_name" binding:"max=64"`
 }
 
-// RUser is used to Read User models
+// RUser is used to read user's general information
 type RUser struct {
 	ID string `json:"username" binding:"required,username,max=64"`
 }
@@ -26,10 +24,4 @@ type RUser struct {
 type LoginUser struct {
 	ID       string `json:"username" binding:"required,username,max=64"`
 	Password string `json:"password" binding:"required,min=8,max=256"`
-}
-
-// Canonicalize UserBinding's fields to be inserted in database
-func (b *CUser) Canonicalize() {
-	b.FirstName = strings.TrimSpace(b.FirstName)
-	b.LastName = strings.TrimSpace(b.LastName)
 }

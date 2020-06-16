@@ -60,7 +60,7 @@ type User struct {
 	UpdatedAt         *time.Time
 }
 
-// CreateUser is used to add a User to our database
+// CreateUser is used to register/add a user to the database
 func CreateUser(b *bindings.CUser) (*views.CUser, error) {
 	var user User
 
@@ -86,7 +86,7 @@ func CreateUser(b *bindings.CUser) (*views.CUser, error) {
 	return nil, ErrUserExists
 }
 
-// ReadUser is used to get information about a User in our database
+// ReadUser is used to get general information about a user in the database
 func ReadUser(b *bindings.RUser) (*views.RUser, error) {
 	var user User
 
@@ -102,7 +102,7 @@ func ReadUser(b *bindings.RUser) (*views.RUser, error) {
 	return nil, ErrUserNotFound
 }
 
-// UpdateUser is used to update a User in our database
+// UpdateUser is used to update user's general information
 func UpdateUser(b *bindings.UUser, authedUser string) *views.UUser {
 	user := User{
 		ID: authedUser,
@@ -119,7 +119,7 @@ func UpdateUser(b *bindings.UUser, authedUser string) *views.UUser {
 	}
 }
 
-// DeleteUser is used to delete a User from our database
+// DeleteUser is used to delete a user from the database
 func DeleteUser(authedUser string) {
 	user := &User{
 		ID: authedUser,
