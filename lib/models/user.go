@@ -4,6 +4,7 @@ import (
 	"errors"
 	"log"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/alexedwards/argon2id"
@@ -35,6 +36,10 @@ var (
 	// ErrUnmOrPwdIncorrect is returned when the provided username or
 	// password are incorrect
 	ErrUnmOrPwdIncorrect = errors.New("Username or password is incorrect")
+
+	// ErrBearerTokenMalformed is returned when the provided bearer token in
+	// Authorization header is malformed
+	ErrBearerTokenMalformed = errors.New("Bearer token is malformed")
 )
 
 var argonConfig = &argon2id.Params{
@@ -132,9 +137,9 @@ func DeleteUser(authedUser string) {
 func LoginUser(b *bindings.LoginUser) (string, error) {
 	var user User
 
-	db := lib.DB.Select("id, password").Where("id = ?", b.ID).First(&user)
+	db := lib.DB.Select("id, email, password").Where("id = ?", b.ID).First(&user)
 	if !db.RecordNotFound() && verifyPassword(b.Password, user.Password) {
-		return lib.Encode(user.ID), nil
+		return lib.Encode(user.ID, user.Email), nil
 	}
 
 	return "", ErrUnmOrPwdIncorrect
@@ -159,24 +164,30 @@ func verifyPassword(password string, hash string) bool {
 }
 
 // Authenticate is a middleware that is used to authenticate users
-// on certain endpoints using cookies, it's not enforcing authentication
+// on certain endpoints using Authorization header, it's not enforcing authentication
 // on endpoints that it's beeing used so endpoints should decide whether
 // they require authentication or not, however it aborts requests if
 // the provided token is malformed, expired or not valid
 func Authenticate() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		token, err := c.Cookie(TokenCookieKey)
-		if err != nil {
+		token := strings.Fields(c.GetHeader("Authorization"))
+
+		if len(token) == 0 {
 			c.Next()
+			return
+		} else if len(token) != 2 || token[0] != "Bearer" {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
+				"error": ErrBearerTokenMalformed.Error(),
+			})
 			return
 		}
 
-		claims, valid, err := lib.Decode(token)
+		claims, valid, err := lib.Decode(token[1])
 		if err == nil && valid {
 			var user User
 			sub := claims["sub"]
 
-			db := lib.DB.Select("id").Where("id = ?", sub).First(&user)
+			db := lib.DB.Select("id").Where("id = ? AND email = ?", sub, claims["email"]).First(&user)
 			if !db.RecordNotFound() {
 				c.Set(UserKey, sub)
 				c.Next()
@@ -196,7 +207,7 @@ func Authenticate() gin.HandlerFunc {
 			})
 		} else {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
-				"error": lib.ErrTokenHasExpired.Error(),
+				"error": lib.ErrTokenIsInvalid.Error(),
 			})
 		}
 	}

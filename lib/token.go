@@ -30,15 +30,16 @@ var (
 )
 
 // Encode is used to encode JWT tokens
-func Encode(sub string) string {
+func Encode(sub, email string) string {
 	now := time.Now().UTC()
 	expires := now.Add(time.Hour * 168) // Expires in one week
 
 	encodeToken := jwt.NewWithClaims(jwt.SigningMethodRS256, jwt.MapClaims{
-		"iss": "Wishlist",
-		"isa": now.Unix(),
-		"exp": expires.Unix(),
-		"sub": sub,
+		"iss":   "Wishlist",
+		"isa":   now.Unix(),
+		"exp":   expires.Unix(),
+		"sub":   sub,
+		"email": email,
 	})
 
 	token, err := encodeToken.SignedString(privateKey)

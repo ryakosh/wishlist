@@ -9,7 +9,7 @@ import (
 )
 
 // LoginUser is a route handler that is used for user authentication,
-// it does so by setting a cookie that contains a token
+// it does so by responding with a json that contains the token
 func LoginUser(c *gin.Context) { // TODO: Don't forget about CSRF attacks
 	var b bindings.LoginUser
 
@@ -27,10 +27,9 @@ func LoginUser(c *gin.Context) { // TODO: Don't forget about CSRF attacks
 	}
 
 	// TODO: User should not be able to authenticate when they are authenticated already
-	// TODO: Update domain when deploying
-	// TODO: Set secure cookie to true in production
-	c.SetCookie(models.TokenCookieKey, token, -1, "/", "localhost", false, true)
-	c.Status(http.StatusOK)
+	c.JSON(http.StatusOK, gin.H{
+		"token": token,
+	})
 }
 
 // CreateUser is a route handler that is used to create/register a new user
