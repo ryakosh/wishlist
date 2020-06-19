@@ -14,7 +14,7 @@ var ErrWishNotFound = errors.New("Wish not found")
 
 // Wish represents a user's wish to buy something, do something etc.
 type Wish struct {
-	ID          uint
+	ID          uint64
 	UserID      string
 	Name        string `gorm:"type:varchar(256)"`
 	Description string `gorm:"type:varchar(1024)"`
@@ -47,10 +47,10 @@ func CreateWish(b *bindings.CWish, authedUser string) *views.CWish {
 }
 
 // ReadWish is used to get general information about a wish in the database
-func ReadWish(b *bindings.RdWish) (*views.RWish, error) {
+func ReadWish(id uint64) (*views.RWish, error) {
 	var wish Wish
 
-	db := lib.DB.Omit("fulfilled_by, created_at, updated_at").First(&wish, b.ID)
+	db := lib.DB.Omit("fulfilled_by, created_at, updated_at").First(&wish, id)
 
 	if !db.RecordNotFound() {
 		return &views.RWish{
@@ -66,7 +66,7 @@ func ReadWish(b *bindings.RdWish) (*views.RWish, error) {
 }
 
 // UpdateWish is used to update wish's general information in the database
-func UpdateWish(id uint, b *bindings.UWish, authedUser string) (*views.UWish, error) {
+func UpdateWish(id uint64, b *bindings.UWish, authedUser string) (*views.UWish, error) {
 	var wish Wish
 
 	db := lib.DB.Select("id, user_id").First(&wish, id)
@@ -95,10 +95,10 @@ func UpdateWish(id uint, b *bindings.UWish, authedUser string) (*views.UWish, er
 }
 
 // DeleteWish is used to delete a wish from the database
-func DeleteWish(b *bindings.RdWish, authedUser string) error {
+func DeleteWish(id uint64, authedUser string) error {
 	var wish Wish
 
-	db := lib.DB.Select("id, user_id").First(&wish, b.ID)
+	db := lib.DB.Select("id, user_id").First(&wish, id)
 	if !db.RecordNotFound() {
 		if wish.UserID == authedUser {
 			lib.DB.Delete(wish)
@@ -109,4 +109,8 @@ func DeleteWish(b *bindings.RdWish, authedUser string) error {
 	}
 
 	return ErrWishNotFound
+}
+
+func init() {
+	lib.DB.AutoMigrate(&Wish{})
 }

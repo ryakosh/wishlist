@@ -7,14 +7,14 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// ErrBodyIsInvalid is returned when the provided request body could not
+// ErrRequestIsInvalid is returned when the provided request could not
 // be handled due to validation or parsing errors
-var ErrBodyIsInvalid = errors.New("Request body is invalid")
+var ErrRequestIsInvalid = errors.New("Request is invalid")
 
 func bindJSON(c *gin.Context, bindTo interface{}) bool {
 	if err := c.ShouldBindJSON(bindTo); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error": ErrBodyIsInvalid.Error(),
+			"error": ErrRequestIsInvalid.Error(),
 		})
 
 		return false

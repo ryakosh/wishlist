@@ -2,7 +2,7 @@ package views
 
 // CWish is used to respond when a new wish is created for a user
 type CWish struct {
-	ID          uint   `json:"id"`
+	ID          uint64 `json:"id"`
 	Name        string `json:"name"`
 	Description string `json:"description"`
 	Link        string `json:"link"`
@@ -11,7 +11,7 @@ type CWish struct {
 
 // RWish is used to respond about a wish's general information
 type RWish struct {
-	ID          uint   `json:"id"`
+	ID          uint64 `json:"id"`
 	UserID      string `json:"user_id"`
 	Name        string `json:"name"`
 	Description string `json:"description"`
@@ -21,7 +21,7 @@ type RWish struct {
 
 // UWish is used to respond when a wish's general information gets updated
 type UWish struct {
-	ID          uint   `json:"id"`
+	ID          uint64 `json:"id"`
 	Name        string `json:"name"`
 	Description string `json:"description"`
 	Link        string `json:"link"`
