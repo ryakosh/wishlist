@@ -19,8 +19,8 @@ func init() {
 	users := r.Group("/users")
 	users.POST("", routes.CreateUser)
 	users.GET("/:id", routes.ReadUser)
-	users.PUT("", models.Authenticate(), routes.UpdateUser)
-	users.DELETE("", models.Authenticate(), routes.DeleteUser)
+	users.PUT("/:id", models.Authenticate(), routes.UpdateUser)
+	users.DELETE("/:id", models.Authenticate(), routes.DeleteUser)
 
 	wishes := r.Group("/wishes")
 	wishes.POST("", models.Authenticate(), routes.CreateWish)

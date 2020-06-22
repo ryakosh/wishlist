@@ -72,9 +72,14 @@ func ReadUser(c *gin.Context) {
 // UpdateUser is a route handler that is used to update general information about a user
 func UpdateUser(c *gin.Context) {
 	var b bindings.UUser
+	id := c.Param("id")
 
 	authedUser := authedUser(c)
 	if authedUser == "" {
+		return
+	}
+
+	if !areIDAndAuthedUserSame(id, authedUser, c) {
 		return
 	}
 
@@ -88,11 +93,29 @@ func UpdateUser(c *gin.Context) {
 
 // DeleteUser is a route handler that is used for user deletion
 func DeleteUser(c *gin.Context) {
+	id := c.Param("id")
+
 	authedUser := authedUser(c)
 	if authedUser == "" {
 		return
 	}
 
+	if !areIDAndAuthedUserSame(id, authedUser, c) {
+		return
+	}
+
 	models.DeleteUser(authedUser)
 	c.Status(http.StatusOK)
+}
+
+func areIDAndAuthedUserSame(id string, authedUser string, c *gin.Context) bool {
+	if id != authedUser {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error": models.ErrUserNotAuthorized.Error(),
+		})
+
+		return false
+	}
+
+	return true
 }
