@@ -19,7 +19,8 @@ func LoginUser(c *gin.Context) { // TODO: Don't forget about CSRF attacks
 
 	token, err := models.LoginUser(&b)
 	if err != nil {
-		c.JSON(http.StatusOK, gin.H{
+		err := err.(*models.RequestError)
+		c.JSON(err.Status, gin.H{
 			"error": err.Error(),
 		})
 
@@ -42,7 +43,8 @@ func CreateUser(c *gin.Context) {
 
 	view, err := models.CreateUser(&b)
 	if err != nil {
-		c.JSON(http.StatusOK, gin.H{
+		err := err.(*models.RequestError)
+		c.JSON(err.Status, gin.H{
 			"error": err.Error(),
 		})
 
@@ -57,7 +59,8 @@ func ReadUser(c *gin.Context) {
 
 	view, err := models.ReadUser(id)
 	if err != nil {
-		c.JSON(http.StatusOK, gin.H{
+		err := err.(*models.RequestError)
+		c.JSON(err.Status, gin.H{
 			"error": err.Error(),
 		})
 
@@ -70,12 +73,8 @@ func ReadUser(c *gin.Context) {
 func UpdateUser(c *gin.Context) {
 	var b bindings.UUser
 
-	authedUser, ok := c.Get(models.UserKey)
-	if !ok {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": models.ErrUserNotAuthorized.Error(),
-		})
-
+	authedUser := authedUser(c)
+	if authedUser == "" {
 		return
 	}
 
@@ -83,21 +82,17 @@ func UpdateUser(c *gin.Context) {
 		return
 	}
 
-	view := models.UpdateUser(&b, authedUser.(string))
+	view := models.UpdateUser(&b, authedUser)
 	c.JSON(http.StatusOK, view)
 }
 
 // DeleteUser is a route handler that is used for user deletion
 func DeleteUser(c *gin.Context) {
-	authedUser, ok := c.Get(models.UserKey)
-	if !ok {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": models.ErrUserNotAuthorized.Error(),
-		})
-
+	authedUser := authedUser(c)
+	if authedUser == "" {
 		return
 	}
 
-	models.DeleteUser(authedUser.(string))
+	models.DeleteUser(authedUser)
 	c.Status(http.StatusOK)
 }

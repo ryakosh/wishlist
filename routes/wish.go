@@ -13,12 +13,8 @@ import (
 func CreateWish(c *gin.Context) {
 	var b bindings.CWish
 
-	authedUser, ok := c.Get(models.UserKey)
-	if !ok {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": models.ErrUserNotAuthorized.Error(),
-		})
-
+	authedUser := authedUser(c)
+	if authedUser == "" {
 		return
 	}
 
@@ -26,7 +22,7 @@ func CreateWish(c *gin.Context) {
 		return
 	}
 
-	view := models.CreateWish(&b, authedUser.(string))
+	view := models.CreateWish(&b, authedUser)
 	c.JSON(http.StatusOK, view)
 }
 
@@ -41,7 +37,8 @@ func ReadWish(c *gin.Context) {
 
 	view, err := models.ReadWish(id)
 	if err != nil {
-		c.JSON(http.StatusOK, gin.H{
+		err := err.(*models.RequestError)
+		c.JSON(err.Status, gin.H{
 			"error": err.Error(),
 		})
 
@@ -61,12 +58,8 @@ func UpdateWish(c *gin.Context) {
 		})
 	}
 
-	authedUser, ok := c.Get(models.UserKey)
-	if !ok {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": models.ErrUserNotAuthorized.Error(),
-		})
-
+	authedUser := authedUser(c)
+	if authedUser == "" {
 		return
 	}
 
@@ -74,21 +67,10 @@ func UpdateWish(c *gin.Context) {
 		return
 	}
 
-	view, err := models.UpdateWish(id, &b, authedUser.(string))
-	if err == models.ErrUserNotAuthorized {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": err.Error(),
-		})
-
-		return
-	} else if err == models.ErrWishNotFound {
-		c.JSON(http.StatusNotFound, gin.H{
-			"error": err.Error(),
-		})
-
-		return
-	} else if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
+	view, err := models.UpdateWish(id, &b, authedUser)
+	if err != nil {
+		err := err.(*models.RequestError)
+		c.JSON(err.Status, gin.H{
 			"error": err.Error(),
 		})
 
@@ -107,30 +89,15 @@ func DeleteWish(c *gin.Context) {
 		})
 	}
 
-	authedUser, ok := c.Get(models.UserKey)
-	if !ok {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": models.ErrUserNotAuthorized.Error(),
-		})
-
+	authedUser := authedUser(c)
+	if authedUser == "" {
 		return
 	}
 
-	err = models.DeleteWish(id, authedUser.(string))
-	if err == models.ErrUserNotAuthorized {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": err.Error(),
-		})
-
-		return
-	} else if err == models.ErrWishNotFound {
-		c.JSON(http.StatusNotFound, gin.H{
-			"error": err.Error(),
-		})
-
-		return
-	} else if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
+	err = models.DeleteWish(id, authedUser)
+	if err != nil {
+		err := err.(*models.RequestError)
+		c.JSON(err.Status, gin.H{
 			"error": err.Error(),
 		})
 

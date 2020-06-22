@@ -88,7 +88,10 @@ func CreateUser(b *bindings.CUser) (*views.CUser, error) {
 		}, nil
 	}
 
-	return nil, ErrUserExists
+	return nil, &RequestError{
+		Status: http.StatusConflict,
+		Err:    ErrUserExists,
+	}
 }
 
 // ReadUser is used to get general information about a user in the database
@@ -104,7 +107,10 @@ func ReadUser(id string) (*views.RUser, error) {
 		}, nil
 	}
 
-	return nil, ErrUserNotFound
+	return nil, &RequestError{
+		Status: http.StatusNotFound,
+		Err:    ErrUserNotFound,
+	}
 }
 
 // UpdateUser is used to update user's general information
@@ -142,7 +148,10 @@ func LoginUser(b *bindings.LoginUser) (string, error) {
 		return lib.Encode(user.ID, user.Email), nil
 	}
 
-	return "", ErrUnmOrPwdIncorrect
+	return "", &RequestError{
+		Status: http.StatusNotFound,
+		Err:    ErrUnmOrPwdIncorrect,
+	}
 }
 
 func genPasswordHash(password string) string {

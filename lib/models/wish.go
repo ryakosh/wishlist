@@ -2,6 +2,7 @@ package models
 
 import (
 	"errors"
+	"net/http"
 	"time"
 
 	"github.com/ryakosh/wishlist/lib"
@@ -62,7 +63,10 @@ func ReadWish(id uint64) (*views.RWish, error) {
 			Image:       wish.Image,
 		}, nil
 	}
-	return nil, ErrWishNotFound
+	return nil, &RequestError{
+		Status: http.StatusNotFound,
+		Err:    ErrWishNotFound,
+	}
 }
 
 // UpdateWish is used to update wish's general information in the database
@@ -88,10 +92,16 @@ func UpdateWish(id uint64, b *bindings.UWish, authedUser string) (*views.UWish, 
 			}, nil
 		}
 
-		return nil, ErrUserNotAuthorized
+		return nil, &RequestError{
+			Status: http.StatusUnauthorized,
+			Err:    ErrUserNotAuthorized,
+		}
 	}
 
-	return nil, ErrWishNotFound
+	return nil, &RequestError{
+		Status: http.StatusNotFound,
+		Err:    ErrWishNotFound,
+	}
 }
 
 // DeleteWish is used to delete a wish from the database
@@ -105,10 +115,16 @@ func DeleteWish(id uint64, authedUser string) error {
 			return nil
 		}
 
-		return ErrUserNotAuthorized
+		return &RequestError{
+			Status: http.StatusUnauthorized,
+			Err:    ErrUserNotAuthorized,
+		}
 	}
 
-	return ErrWishNotFound
+	return &RequestError{
+		Status: http.StatusNotFound,
+		Err:    ErrWishNotFound,
+	}
 }
 
 func init() {
