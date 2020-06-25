@@ -18,7 +18,7 @@ require (
 	github.com/imdario/mergo v0.3.9 // indirect
 	github.com/jaytaylor/html2text v0.0.0-20200412013138-3577fbdbcff7 // indirect
 	github.com/jinzhu/gorm v1.9.12
-	github.com/matcornic/hermes/v2 v2.1.0 // indirect
+	github.com/matcornic/hermes/v2 v2.1.0
 	github.com/mattn/go-runewidth v0.0.9 // indirect
 	github.com/mitchellh/copystructure v1.0.0 // indirect
 	github.com/mitchellh/reflectwalk v1.0.1 // indirect
