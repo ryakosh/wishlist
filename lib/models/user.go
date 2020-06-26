@@ -65,6 +65,7 @@ type User struct {
 	Wishes            []Wish
 	FulfilledWishes   []Wish `gorm:"foreignkey:FulfilledBy"`
 	WantFulfillWishes []Wish `gorm:"many2many:userswant_wishes"`
+	Code              Code
 	CreatedAt         *time.Time
 	UpdatedAt         *time.Time
 }
@@ -149,13 +150,6 @@ func LoginUser(b *bindings.LoginUser) (string, error) {
 
 	db := lib.DB.Select("id, email, password, is_email_verified").Where("id = ?", b.ID).First(&user)
 	if !db.RecordNotFound() && verifyPassword(b.Password, user.Password) {
-		if !user.IsEmailVerified {
-			return "", &RequestError{
-				Status: http.StatusUnauthorized,
-				Err:    ErrUserNotVerified,
-			}
-		}
-
 		return lib.Encode(user.ID, user.Email), nil
 	}
 
