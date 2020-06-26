@@ -8,9 +8,14 @@ import (
 
 var (
 	smtpServerEnv string
-	BotEmailEnv   string
+
+	// BotEmailEnv is an environment variable used to set server's bot email
+	// address, bot should be a no-reply email address used for email confirmation,
+	// password reset etc.
+	BotEmailEnv string
 )
 
+// Send is used to send a mail to a user
 func Send(email string, to string, sub string, msg string) error {
 	tos := []string{to}
 	body := []byte("To: " + tos[0] + "\r\n" +
