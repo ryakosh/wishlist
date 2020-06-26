@@ -40,6 +40,10 @@ var (
 	// ErrBearerTokenMalformed is returned when the provided bearer token in
 	// Authorization header is malformed
 	ErrBearerTokenMalformed = errors.New("Bearer token is malformed")
+
+	// ErrUserNotVerified is returned when user's email address has not yet
+	// been verified
+	ErrUserNotVerified = errors.New("User not verified")
 )
 
 var argonConfig = &argon2id.Params{
@@ -143,8 +147,15 @@ func DeleteUser(authedUser string) {
 func LoginUser(b *bindings.LoginUser) (string, error) {
 	var user User
 
-	db := lib.DB.Select("id, email, password").Where("id = ?", b.ID).First(&user)
+	db := lib.DB.Select("id, email, password, is_email_verified").Where("id = ?", b.ID).First(&user)
 	if !db.RecordNotFound() && verifyPassword(b.Password, user.Password) {
+		if !user.IsEmailVerified {
+			return "", &RequestError{
+				Status: http.StatusUnauthorized,
+				Err:    ErrUserNotVerified,
+			}
+		}
+
 		return lib.Encode(user.ID, user.Email), nil
 	}
 
