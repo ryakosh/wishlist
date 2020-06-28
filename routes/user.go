@@ -108,6 +108,37 @@ func DeleteUser(c *gin.Context) {
 	c.Status(http.StatusOK)
 }
 
+func VerifyUserEmail(c *gin.Context) {
+	var b bindings.VerifyUserEmail
+
+	id := c.Param("id")
+
+	authedUser := authedUser(c)
+	if authedUser == "" {
+		return
+	}
+
+	if !areIDAndAuthedUserSame(id, authedUser, c) {
+		return
+	}
+
+	if ok := bindJSON(c, &b); !ok {
+		return
+	}
+
+	err := models.VerifyUserEmail(&b, authedUser)
+	if err != nil {
+		err := err.(*models.RequestError)
+		c.JSON(err.Status, gin.H{
+			"error": err.Error(),
+		})
+
+		return
+	}
+
+	c.Status(http.StatusOK)
+}
+
 func areIDAndAuthedUserSame(id string, authedUser string, c *gin.Context) bool {
 	if id != authedUser {
 		c.JSON(http.StatusUnauthorized, gin.H{

@@ -20,3 +20,9 @@ type LoginUser struct {
 	ID       string `json:"username" binding:"required,username,max=64"`
 	Password string `json:"password" binding:"required,min=8,max=256"`
 }
+
+// VerifyUserEmail is used by users to provide their previously generated
+// random codes(by server), to verify their email
+type VerifyUserEmail struct {
+	Code string `json:"code" binding:"required,max=14"`
+}

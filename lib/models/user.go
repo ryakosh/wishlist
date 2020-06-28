@@ -9,8 +9,10 @@ import (
 
 	"github.com/alexedwards/argon2id"
 	"github.com/gin-gonic/gin"
+	"github.com/jinzhu/gorm"
 	"github.com/ryakosh/wishlist/lib"
 	"github.com/ryakosh/wishlist/lib/bindings"
+	"github.com/ryakosh/wishlist/lib/email"
 	"github.com/ryakosh/wishlist/lib/views"
 )
 
@@ -44,6 +46,10 @@ var (
 	// ErrUserNotVerified is returned when user's email address has not yet
 	// been verified
 	ErrUserNotVerified = errors.New("User not verified")
+
+	// ErrEmailVerified is returned when user's email address is
+	// already verfied
+	ErrEmailVerified = errors.New("Email is already verified")
 )
 
 var argonConfig = &argon2id.Params{
@@ -70,6 +76,14 @@ type User struct {
 	UpdatedAt         *time.Time
 }
 
+// AfterDelete is used to clean up after the user got deleted
+func (u *User) AfterDelete(tx *gorm.DB) error {
+	lib.DB.Where("user_id = ?", u.ID).Delete(&Wish{})
+	lib.DB.Where("user_id = ?", u.ID).Delete(&Code{})
+
+	return nil
+}
+
 // CreateUser is used to register/add a user to the database
 func CreateUser(b *bindings.CUser) (*views.CUser, error) {
 	var user User
@@ -85,6 +99,39 @@ func CreateUser(b *bindings.CUser) (*views.CUser, error) {
 		}
 
 		lib.DB.Create(&user)
+
+		code, err := CreateCode(user.ID)
+		if err != nil {
+			se, ok := err.(*ServerError)
+			if ok {
+				log.Printf("error: Could not generate email confirmation mail\n\treason: %s\n", err)
+				return nil, &RequestError{
+					Status: se.Status,
+					Err:    email.ErrSendMail,
+				}
+			}
+
+			return nil, err
+		}
+
+		mail, err := email.GenEmailConfirmMail(user.ID, code)
+		if err != nil {
+			log.Printf("error: Could not generate email confirmation mail\n\treason: %s\n", err)
+			return nil, &RequestError{
+				Status: http.StatusInternalServerError,
+				Err:    email.ErrSendMail,
+			}
+		}
+
+		err = email.Send(email.BotEmailEnv, user.Email, "لطفا ایمیل خود را تایید کنید [ویش لیست]", mail)
+		if err != nil {
+			log.Printf("error: Could not generate email confirmation mail\n\treason: %s\n", err)
+			return nil, &RequestError{
+				Status: http.StatusInternalServerError,
+				Err:    email.ErrSendMail,
+			}
+		}
+
 		return &views.CUser{
 			ID:        user.ID,
 			Email:     user.Email,
@@ -177,6 +224,32 @@ func verifyPassword(password string, hash string) bool {
 	return isMatch
 }
 
+// VerifyUserEmail is used to verify user's email address using
+// the generated safe random code
+func VerifyUserEmail(b *bindings.VerifyUserEmail, authedUser string) error {
+	var user User
+
+	lib.DB.Select("is_email_verified").Where("id = ?", authedUser).First(&user)
+
+	if user.IsEmailVerified {
+		return &RequestError{
+			Status: http.StatusOK,
+			Err:    ErrEmailVerified,
+		}
+	}
+
+	isMatch, err := VerifyCode(authedUser, b.Code)
+	if err != nil {
+		return err
+	}
+
+	if isMatch {
+		lib.DB.Model(&User{ID: authedUser}).Update("is_email_verified", true)
+	}
+
+	return nil
+}
+
 // Authenticate is a middleware that is used to authenticate users
 // on certain endpoints using Authorization header, it's not enforcing authentication
 // on endpoints that it's beeing used so endpoints should decide whether
@@ -222,6 +295,31 @@ func Authenticate() gin.HandlerFunc {
 		} else {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
 				"error": lib.ErrTokenIsInvalid.Error(),
+			})
+		}
+	}
+}
+
+// RequireEmailVerification is a middleware that is used to
+// indicate that a user's email address must be verified in order
+// to access this endpoint, it should be called after the Authenticate
+// middleware
+func RequireEmailVerification() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		authedUser, ok := c.Get(UserKey)
+		if !ok {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
+				"error": ErrUserNotAuthorized.Error(),
+			})
+			return
+		}
+
+		var user User
+		lib.DB.Select("is_email_verified").Where("id = ?", authedUser).First(&user)
+
+		if !user.IsEmailVerified {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
+				"error": ErrUserNotAuthorized.Error(),
 			})
 		}
 	}

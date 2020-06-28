@@ -1,10 +1,15 @@
 package email
 
 import (
+	"errors"
 	"log"
 	"net/smtp"
 	"os"
 )
+
+// ErrSendMail is returned when the server could not generate or send
+// a mail
+var ErrSendMail = errors.New("Could not send mail")
 
 var (
 	smtpServerEnv string

@@ -21,9 +21,10 @@ func init() {
 	users.GET("/:id", routes.ReadUser)
 	users.PUT("/:id", models.Authenticate(), routes.UpdateUser)
 	users.DELETE("/:id", models.Authenticate(), routes.DeleteUser)
+	users.PUT("/:id/verify_email", models.Authenticate(), routes.VerifyUserEmail)
 
 	wishes := r.Group("/wishes")
-	wishes.POST("", models.Authenticate(), routes.CreateWish)
+	wishes.POST("", models.Authenticate(), models.RequireEmailVerification(), routes.CreateWish)
 	wishes.GET("/:id", routes.ReadWish)
 	wishes.PUT("/:id", models.Authenticate(), routes.UpdateWish)
 	wishes.DELETE("/:id", models.Authenticate(), routes.DeleteWish)
