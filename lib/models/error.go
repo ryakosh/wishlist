@@ -1,5 +1,12 @@
 package models
 
+import (
+	"errors"
+	"net/http"
+)
+
+var ErrInternalServer = errors.New(http.StatusText(http.StatusInternalServerError))
+
 // RequestError is an error wrapper type that wraps request's error as
 // well as it's http status code
 type RequestError struct {

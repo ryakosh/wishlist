@@ -72,6 +72,8 @@ type User struct {
 	FulfilledWishes   []Wish `gorm:"foreignkey:FulfilledBy"`
 	WantFulfillWishes []Wish `gorm:"many2many:userswant_wishes"`
 	Code              Code
+	Friends           []*User `gorm:"many2many:friendships;association_jointable_foreignkey:friend_id"`
+	FriendRequests    []*User `gorm:"many2many:friendrequests;association_jointable_foreignkey:requester_id"`
 	CreatedAt         *time.Time
 	UpdatedAt         *time.Time
 }
@@ -248,6 +250,131 @@ func VerifyUserEmail(b *bindings.VerifyUserEmail, authedUser string) error {
 	}
 
 	return nil
+}
+
+func ReqFriendship(b *bindings.Requestee, authedUser string) (*views.Requestee, error) { // TODO: A user should not be able to be friends with their own
+	var requestee User
+	var friendsCount uint8
+
+	db := lib.DB.Select("id").Where("id = ?", b.Requestee).First(&requestee)
+	if db.RecordNotFound() {
+		return nil, &RequestError{
+			Status: http.StatusNotFound,
+			Err:    ErrUserNotFound,
+		}
+	}
+
+	lib.DB.Table("friendships").Where("user_id = ? AND friend_id = ?", authedUser, requestee.ID).Count(&friendsCount)
+	if friendsCount != 0 {
+		return nil, &RequestError{
+			Status: http.StatusConflict,
+			Err:    ErrUserExists,
+		}
+	}
+
+	err := lib.DB.Model(&User{ID: requestee.ID}).Association("FriendRequests").Append(&User{ID: authedUser}).Error
+	if err != nil {
+		log.Printf("error: Could not request friendship\n\treason: %s", err)
+		return nil, &RequestError{
+			Status: http.StatusInternalServerError,
+			Err:    ErrInternalServer,
+		}
+	}
+
+	return &views.Requestee{
+		Requestee: requestee.ID,
+	}, nil
+}
+
+func AccFriendship(b *bindings.Requestee, authedUser string) (*views.Requestee, error) {
+	var requestees []User
+
+	lib.DB.Model(&User{ID: authedUser}).Select("id").Where(
+		"requester_id = ?", b.Requestee).Related(&requestees, "FriendRequests")
+
+	if len(requestees) != 1 {
+		return nil, &RequestError{
+			Status: http.StatusNotFound,
+			Err:    ErrUserNotFound,
+		}
+	}
+
+	err := lib.DB.Transaction(func(tx *gorm.DB) error {
+		err := tx.Model(&User{ID: authedUser}).Association("Friends").Append(requestees[0]).Error
+		if err != nil {
+			return err
+		}
+
+		err = tx.Model(&User{ID: requestees[0].ID}).Association("Friends").Append(&User{ID: authedUser}).Error
+		if err != nil {
+			return err
+		}
+
+		err = tx.Model(&User{ID: authedUser}).Association("FriendRequests").Delete(requestees[0]).Error
+		if err != nil {
+			return err
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		log.Printf("error: Could not accept friendship\n\treason: %s", err)
+		return nil, &RequestError{
+			Status: http.StatusInternalServerError,
+			Err:    ErrInternalServer,
+		}
+	}
+
+	return &views.Requestee{
+		Requestee: requestees[0].ID,
+	}, nil
+}
+
+func CountFriends(authedUser string) *views.CountFriends {
+	count := lib.DB.Model(&User{ID: authedUser}).Association("Friends").Count()
+
+	return &views.CountFriends{
+		Count: count,
+	}
+}
+
+func ReadFriends(page uint64, authedUser string) *[]views.RUser {
+	var friends []User
+	var vs []views.RUser
+
+	lib.DB.Model(&User{ID: authedUser}).Select(
+		"id, first_name, last_name").Offset(
+		(page * 10) - 10).Limit(10).Association("Friends").Find(&friends)
+
+	for _, u := range friends {
+		vs = append(vs, views.RUser{
+			ID:        u.ID,
+			FirstName: u.FirstName,
+			LastName:  u.LastName,
+		})
+	}
+
+	return &vs
+}
+
+func ReadFriendRequests(page uint64, authedUser string) *[]views.RUser {
+	var reqs []User
+	var vs []views.RUser
+
+	lib.DB.Model(&User{ID: authedUser}).Select(
+		"id, first_name, last_name").Offset(
+		(page * 10) - 10).Limit(10).Association("FriendRequests").Find(&reqs)
+
+	for _, u := range reqs {
+		vs = append(vs, views.RUser{
+			ID:        u.ID,
+			FirstName: u.FirstName,
+			LastName:  u.LastName,
+		})
+	}
+
+	return &vs
 }
 
 // Authenticate is a middleware that is used to authenticate users

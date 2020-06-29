@@ -26,3 +26,11 @@ type LoginUser struct {
 type VerifyUserEmail struct {
 	Code string `json:"code" binding:"required,max=14"`
 }
+
+type Requestee struct {
+	Requestee string `json:"requestee" binding:"required,username,max=64"`
+}
+
+type ReadFriends struct {
+	Page uint16 `json:"page" binding:"required"`
+}

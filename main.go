@@ -38,6 +38,13 @@ func init() {
 	users.PUT("/:id", models.Authenticate(), routes.UpdateUser)
 	users.DELETE("/:id", models.Authenticate(), routes.DeleteUser)
 	users.PUT("/:id/verify_email", models.Authenticate(), routes.VerifyUserEmail)
+	users.GET("/:id/friend_requests", models.Authenticate(), models.RequireEmailVerification(), routes.ReadFriendRequests)
+
+	friends := users.Group("/:id/friends")
+	friends.GET("", models.Authenticate(), models.RequireEmailVerification(), routes.ReadFriends)
+	friends.GET("/count", models.Authenticate(), models.RequireEmailVerification(), routes.CountFriends)
+	friends.PUT("/send_request", models.Authenticate(), models.RequireEmailVerification(), routes.ReqFriendship)
+	friends.PUT("/accept_request", models.Authenticate(), models.RequireEmailVerification(), routes.AccFriendship)
 
 	wishes := r.Group("/wishes")
 	wishes.POST("", models.Authenticate(), models.RequireEmailVerification(), routes.CreateWish)

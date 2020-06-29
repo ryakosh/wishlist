@@ -2,6 +2,7 @@ package routes
 
 import (
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/ryakosh/wishlist/lib/bindings"
@@ -137,6 +138,133 @@ func VerifyUserEmail(c *gin.Context) {
 	}
 
 	c.Status(http.StatusOK)
+}
+
+func ReqFriendship(c *gin.Context) {
+	var b bindings.Requestee
+
+	id := c.Param("id")
+
+	authedUser := authedUser(c)
+	if authedUser == "" {
+		return
+	}
+
+	if !areIDAndAuthedUserSame(id, authedUser, c) {
+		return
+	}
+
+	if ok := bindJSON(c, &b); !ok {
+		return
+	}
+
+	view, err := models.ReqFriendship(&b, authedUser)
+	if err != nil {
+		err := err.(*models.RequestError)
+		c.JSON(err.Status, gin.H{
+			"error": err.Error(),
+		})
+
+		return
+	}
+
+	c.JSON(http.StatusOK, view)
+}
+
+func AccFriendship(c *gin.Context) {
+	var b bindings.Requestee
+
+	id := c.Param("id")
+
+	authedUser := authedUser(c)
+	if authedUser == "" {
+		return
+	}
+
+	if !areIDAndAuthedUserSame(id, authedUser, c) {
+		return
+	}
+
+	if ok := bindJSON(c, &b); !ok {
+		return
+	}
+
+	view, err := models.AccFriendship(&b, authedUser)
+	if err != nil {
+		err := err.(*models.RequestError)
+		c.JSON(err.Status, gin.H{
+			"error": err.Error(),
+		})
+
+		return
+	}
+
+	c.JSON(http.StatusOK, view)
+}
+
+func CountFriends(c *gin.Context) {
+	id := c.Param("id")
+
+	authedUser := authedUser(c)
+	if authedUser == "" {
+		return
+	}
+
+	if !areIDAndAuthedUserSame(id, authedUser, c) {
+		return
+	}
+
+	view := models.CountFriends(authedUser)
+
+	c.JSON(http.StatusOK, view)
+}
+
+func ReadFriends(c *gin.Context) {
+	id := c.Param("id")
+	page, err := strconv.ParseUint(c.DefaultQuery("page", "0"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": ErrRequestIsInvalid.Error(),
+		})
+		return
+	}
+
+	authedUser := authedUser(c)
+	if authedUser == "" {
+		return
+	}
+
+	if !areIDAndAuthedUserSame(id, authedUser, c) {
+		return
+	}
+
+	view := models.ReadFriends(page, authedUser)
+
+	c.JSON(http.StatusOK, view)
+}
+
+func ReadFriendRequests(c *gin.Context) {
+	id := c.Param("id")
+	page, err := strconv.ParseUint(c.DefaultQuery("page", "0"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": ErrRequestIsInvalid.Error(),
+		})
+		return
+	}
+
+	authedUser := authedUser(c)
+	if authedUser == "" {
+		return
+	}
+
+	if !areIDAndAuthedUserSame(id, authedUser, c) {
+		return
+	}
+
+	view := models.ReadFriendRequests(page, authedUser)
+
+	c.JSON(http.StatusOK, view)
 }
 
 func areIDAndAuthedUserSame(id string, authedUser string, c *gin.Context) bool {

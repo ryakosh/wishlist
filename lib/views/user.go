@@ -20,3 +20,15 @@ type RUser struct {
 	FirstName string `json:"first_name"`
 	LastName  string `json:"last_name"`
 }
+
+type Requestee struct {
+	Requestee string `json:"requestee"`
+}
+
+type CountFriends struct {
+	Count int `json:"count"`
+}
+
+type ReadFriends struct {
+	Friends []RUser `json:"friends"`
+}
