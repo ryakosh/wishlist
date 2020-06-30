@@ -21,14 +21,13 @@ type RUser struct {
 	LastName  string `json:"last_name"`
 }
 
+// Requestee is used to respond clients that their friendship request
+// or accepting a friendship request succeeded
 type Requestee struct {
 	Requestee string `json:"requestee"`
 }
 
+// CountFriends is used to respond clients with user's friends count
 type CountFriends struct {
 	Count int `json:"count"`
-}
-
-type ReadFriends struct {
-	Friends []RUser `json:"friends"`
 }

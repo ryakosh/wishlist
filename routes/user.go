@@ -54,7 +54,7 @@ func CreateUser(c *gin.Context) {
 	c.JSON(http.StatusCreated, view)
 }
 
-// ReadUser is a route hander that is used to get general information about a user
+// ReadUser is a route handler that is used to get general information about a user
 func ReadUser(c *gin.Context) {
 	id := c.Param("id")
 
@@ -109,6 +109,8 @@ func DeleteUser(c *gin.Context) {
 	c.Status(http.StatusOK)
 }
 
+// VerifyUserEmail is a route handler that is used to verify user's email address using
+// a randomly generated cryptographically safe code
 func VerifyUserEmail(c *gin.Context) {
 	var b bindings.VerifyUserEmail
 
@@ -140,6 +142,8 @@ func VerifyUserEmail(c *gin.Context) {
 	c.Status(http.StatusOK)
 }
 
+// ReqFriendship is a route handler that is used to request friendship from another
+// user in the database
 func ReqFriendship(c *gin.Context) {
 	var b bindings.Requestee
 
@@ -171,6 +175,8 @@ func ReqFriendship(c *gin.Context) {
 	c.JSON(http.StatusOK, view)
 }
 
+// AccFriendship is a route handler that is used to accept a friendship
+// request from another user that has been previously requested for friendship
 func AccFriendship(c *gin.Context) {
 	var b bindings.Requestee
 
@@ -202,6 +208,7 @@ func AccFriendship(c *gin.Context) {
 	c.JSON(http.StatusOK, view)
 }
 
+// CountFriends is a route hander that is used to count user's friends
 func CountFriends(c *gin.Context) {
 	id := c.Param("id")
 
@@ -219,6 +226,7 @@ func CountFriends(c *gin.Context) {
 	c.JSON(http.StatusOK, view)
 }
 
+// ReadFriends is a route hander that is used to get user's friends
 func ReadFriends(c *gin.Context) {
 	id := c.Param("id")
 	page, err := strconv.ParseUint(c.DefaultQuery("page", "0"), 10, 64)
@@ -243,6 +251,8 @@ func ReadFriends(c *gin.Context) {
 	c.JSON(http.StatusOK, view)
 }
 
+// ReadFriendRequests is a route hander that is used to get user's friend
+// requests
 func ReadFriendRequests(c *gin.Context) {
 	id := c.Param("id")
 	page, err := strconv.ParseUint(c.DefaultQuery("page", "0"), 10, 64)

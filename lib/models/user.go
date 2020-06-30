@@ -252,6 +252,8 @@ func VerifyUserEmail(b *bindings.VerifyUserEmail, authedUser string) error {
 	return nil
 }
 
+// ReqFriendship is used to request friendship from another user in the
+// database
 func ReqFriendship(b *bindings.Requestee, authedUser string) (*views.Requestee, error) { // TODO: A user should not be able to be friends with their own
 	var requestee User
 	var friendsCount uint8
@@ -286,6 +288,8 @@ func ReqFriendship(b *bindings.Requestee, authedUser string) (*views.Requestee, 
 	}, nil
 }
 
+// AccFriendship is used to accept a friendship
+// request from another user that has been previously requested for friendship
 func AccFriendship(b *bindings.Requestee, authedUser string) (*views.Requestee, error) {
 	var requestees []User
 
@@ -331,6 +335,7 @@ func AccFriendship(b *bindings.Requestee, authedUser string) (*views.Requestee, 
 	}, nil
 }
 
+// CountFriends is used to count user's friends
 func CountFriends(authedUser string) *views.CountFriends {
 	count := lib.DB.Model(&User{ID: authedUser}).Association("Friends").Count()
 
@@ -339,6 +344,7 @@ func CountFriends(authedUser string) *views.CountFriends {
 	}
 }
 
+// ReadFriends is used to get user's friends
 func ReadFriends(page uint64, authedUser string) *[]views.RUser {
 	var friends []User
 	var vs []views.RUser
@@ -358,6 +364,7 @@ func ReadFriends(page uint64, authedUser string) *[]views.RUser {
 	return &vs
 }
 
+// ReadFriendRequests is used to get user's friend requests
 func ReadFriendRequests(page uint64, authedUser string) *[]views.RUser {
 	var reqs []User
 	var vs []views.RUser
