@@ -208,6 +208,57 @@ func AccFriendship(c *gin.Context) {
 	c.JSON(http.StatusOK, view)
 }
 
+// RejFriendship is a route handler that is used to reject a friendship
+// request from another user that has been previously requested for friendship
+func RejFriendship(c *gin.Context) {
+	var b bindings.Requestee
+
+	id := c.Param("id")
+
+	authedUser := authedUser(c)
+	if authedUser == "" {
+		return
+	}
+
+	if !areIDAndAuthedUserSame(id, authedUser, c) {
+		return
+	}
+
+	if ok := bindJSON(c, &b); !ok {
+		return
+	}
+
+	view, err := models.RejFriendship(&b, authedUser)
+	if err != nil {
+		err := err.(*models.RequestError)
+		c.JSON(err.Status, gin.H{
+			"error": err.Error(),
+		})
+
+		return
+	}
+
+	c.JSON(http.StatusOK, view)
+}
+
+// CountFriendRequests is a route hander that is used to count user's friend requests
+func CountFriendRequests(c *gin.Context) {
+	id := c.Param("id")
+
+	authedUser := authedUser(c)
+	if authedUser == "" {
+		return
+	}
+
+	if !areIDAndAuthedUserSame(id, authedUser, c) {
+		return
+	}
+
+	view := models.CountFriendRequests(authedUser)
+
+	c.JSON(http.StatusOK, view)
+}
+
 // CountFriends is a route hander that is used to count user's friends
 func CountFriends(c *gin.Context) {
 	id := c.Param("id")
@@ -229,8 +280,8 @@ func CountFriends(c *gin.Context) {
 // ReadFriends is a route hander that is used to get user's friends
 func ReadFriends(c *gin.Context) {
 	id := c.Param("id")
-	page, err := strconv.ParseUint(c.DefaultQuery("page", "0"), 10, 64)
-	if err != nil {
+	page, err := strconv.ParseUint(c.DefaultQuery("page", "1"), 10, 64)
+	if err != nil || page < 1 {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": ErrRequestIsInvalid.Error(),
 		})
@@ -255,8 +306,8 @@ func ReadFriends(c *gin.Context) {
 // requests
 func ReadFriendRequests(c *gin.Context) {
 	id := c.Param("id")
-	page, err := strconv.ParseUint(c.DefaultQuery("page", "0"), 10, 64)
-	if err != nil {
+	page, err := strconv.ParseUint(c.DefaultQuery("page", "1"), 10, 64)
+	if err != nil || page < 1 {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": ErrRequestIsInvalid.Error(),
 		})

@@ -254,9 +254,17 @@ func VerifyUserEmail(b *bindings.VerifyUserEmail, authedUser string) error {
 
 // ReqFriendship is used to request friendship from another user in the
 // database
-func ReqFriendship(b *bindings.Requestee, authedUser string) (*views.Requestee, error) { // TODO: A user should not be able to be friends with their own
+func ReqFriendship(b *bindings.Requestee, authedUser string) (*views.Requestee, error) {
 	var requestee User
 	var friendsCount uint8
+	var friendRequestsCount uint8
+
+	if authedUser == b.Requestee {
+		return nil, &RequestError{
+			Status: http.StatusNotFound,
+			Err:    ErrUserNotFound,
+		}
+	}
 
 	db := lib.DB.Select("id").Where("id = ?", b.Requestee).First(&requestee)
 	if db.RecordNotFound() {
@@ -266,8 +274,9 @@ func ReqFriendship(b *bindings.Requestee, authedUser string) (*views.Requestee, 
 		}
 	}
 
+	lib.DB.Table("friendrequests").Where("user_id = ? AND requester_id = ?", requestee.ID, authedUser).Count(&friendRequestsCount)
 	lib.DB.Table("friendships").Where("user_id = ? AND friend_id = ?", authedUser, requestee.ID).Count(&friendsCount)
-	if friendsCount != 0 {
+	if friendRequestsCount != 0 || friendsCount != 0 {
 		return nil, &RequestError{
 			Status: http.StatusConflict,
 			Err:    ErrUserExists,
@@ -288,8 +297,8 @@ func ReqFriendship(b *bindings.Requestee, authedUser string) (*views.Requestee, 
 	}, nil
 }
 
-// AccFriendship is used to accept a friendship
-// request from another user that has been previously requested for friendship
+// AccFriendship is used to accept a friendship request from another user
+// that has been previously requested for friendship
 func AccFriendship(b *bindings.Requestee, authedUser string) (*views.Requestee, error) {
 	var requestees []User
 
@@ -335,6 +344,44 @@ func AccFriendship(b *bindings.Requestee, authedUser string) (*views.Requestee, 
 	}, nil
 }
 
+// RejFriendship is used to reject a friendship request from another user
+// that has been previously requested for friendship
+func RejFriendship(b *bindings.Requestee, authedUser string) (*views.Requestee, error) {
+	var requestees []User
+
+	lib.DB.Model(&User{ID: authedUser}).Select("id").Where(
+		"requester_id = ?", b.Requestee).Related(&requestees, "FriendRequests")
+
+	if len(requestees) != 1 {
+		return nil, &RequestError{
+			Status: http.StatusNotFound,
+			Err:    ErrUserNotFound,
+		}
+	}
+	err := lib.DB.Model(&User{ID: authedUser}).Association("FriendRequests").Delete(requestees[0]).Error
+
+	if err != nil {
+		log.Printf("error: Could not reject friendship\n\treason: %s", err)
+		return nil, &RequestError{
+			Status: http.StatusInternalServerError,
+			Err:    ErrInternalServer,
+		}
+	}
+
+	return &views.Requestee{
+		Requestee: requestees[0].ID,
+	}, nil
+}
+
+// CountFriendRequests is used to count user's friend requests
+func CountFriendRequests(authedUser string) *views.CountFriends {
+	count := lib.DB.Model(&User{ID: authedUser}).Association("FriendRequests").Count()
+
+	return &views.CountFriends{
+		Count: count,
+	}
+}
+
 // CountFriends is used to count user's friends
 func CountFriends(authedUser string) *views.CountFriends {
 	count := lib.DB.Model(&User{ID: authedUser}).Association("Friends").Count()
@@ -345,43 +392,47 @@ func CountFriends(authedUser string) *views.CountFriends {
 }
 
 // ReadFriends is used to get user's friends
-func ReadFriends(page uint64, authedUser string) *[]views.RUser {
+func ReadFriends(page uint64, authedUser string) *views.ReadFriends {
 	var friends []User
-	var vs []views.RUser
+	var vs []*views.RUser
 
 	lib.DB.Model(&User{ID: authedUser}).Select(
 		"id, first_name, last_name").Offset(
 		(page * 10) - 10).Limit(10).Association("Friends").Find(&friends)
 
 	for _, u := range friends {
-		vs = append(vs, views.RUser{
+		vs = append(vs, &views.RUser{
 			ID:        u.ID,
 			FirstName: u.FirstName,
 			LastName:  u.LastName,
 		})
 	}
 
-	return &vs
+	return &views.ReadFriends{
+		Friends: vs,
+	}
 }
 
 // ReadFriendRequests is used to get user's friend requests
-func ReadFriendRequests(page uint64, authedUser string) *[]views.RUser {
+func ReadFriendRequests(page uint64, authedUser string) *views.ReadFriendRequests {
 	var reqs []User
-	var vs []views.RUser
+	var vs []*views.RUser
 
 	lib.DB.Model(&User{ID: authedUser}).Select(
 		"id, first_name, last_name").Offset(
 		(page * 10) - 10).Limit(10).Association("FriendRequests").Find(&reqs)
 
 	for _, u := range reqs {
-		vs = append(vs, views.RUser{
+		vs = append(vs, &views.RUser{
 			ID:        u.ID,
 			FirstName: u.FirstName,
 			LastName:  u.LastName,
 		})
 	}
 
-	return &vs
+	return &views.ReadFriendRequests{
+		Requesters: vs,
+	}
 }
 
 // Authenticate is a middleware that is used to authenticate users
