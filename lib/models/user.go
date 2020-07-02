@@ -297,6 +297,30 @@ func ReqFriendship(b *bindings.Requestee, authedUser string) (*views.Requestee, 
 	}, nil
 }
 
+// UnReqFriendship is used to delete user's friendship request
+func UnReqFriendship(b *bindings.Requestee, authedUser string) (*views.Requestee, error) {
+	c := lib.DB.Model(&User{ID: b.Requestee}).Where("requester_id = ?", authedUser).Association("FriendRequests").Count()
+	if c != 1 {
+		return nil, &RequestError{
+			Status: http.StatusNotFound,
+			Err:    ErrUserNotFound,
+		}
+	}
+
+	err := lib.DB.Model(&User{ID: b.Requestee}).Association("FriendRequests").Delete(&User{ID: authedUser}).Error
+	if err != nil {
+		log.Printf("error: Could not delete friendship request\n\treason: %s", err)
+		return nil, &RequestError{
+			Status: http.StatusInternalServerError,
+			Err:    ErrInternalServer,
+		}
+	}
+
+	return &views.Requestee{
+		Requestee: b.Requestee,
+	}, nil
+}
+
 // AccFriendship is used to accept a friendship request from another user
 // that has been previously requested for friendship
 func AccFriendship(b *bindings.Requestee, authedUser string) (*views.Requestee, error) {

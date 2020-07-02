@@ -175,6 +175,38 @@ func ReqFriendship(c *gin.Context) {
 	c.JSON(http.StatusOK, view)
 }
 
+// UnReqFriendship is a route handler that is used to delete a friendship request
+func UnReqFriendship(c *gin.Context) {
+	var b bindings.Requestee
+
+	id := c.Param("id")
+
+	authedUser := authedUser(c)
+	if authedUser == "" {
+		return
+	}
+
+	if !areIDAndAuthedUserSame(id, authedUser, c) {
+		return
+	}
+
+	if ok := bindJSON(c, &b); !ok {
+		return
+	}
+
+	view, err := models.UnReqFriendship(&b, authedUser)
+	if err != nil {
+		err := err.(*models.RequestError)
+		c.JSON(err.Status, gin.H{
+			"error": err.Error(),
+		})
+
+		return
+	}
+
+	c.JSON(http.StatusOK, view)
+}
+
 // AccFriendship is a route handler that is used to accept a friendship
 // request from another user that has been previously requested for friendship
 func AccFriendship(c *gin.Context) {

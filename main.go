@@ -47,6 +47,7 @@ func init() {
 	friends.GET("", models.Authenticate(), models.RequireEmailVerification(), routes.ReadFriends)
 	friends.GET("/count", models.Authenticate(), models.RequireEmailVerification(), routes.CountFriends)
 	friends.PUT("/send_request", models.Authenticate(), models.RequireEmailVerification(), routes.ReqFriendship)
+	friends.DELETE("/undo_request", models.Authenticate(), models.RequireEmailVerification(), routes.UnReqFriendship)
 	friends.PUT("/accept_request", models.Authenticate(), models.RequireEmailVerification(), routes.AccFriendship)
 	friends.DELETE("/reject_request", models.Authenticate(), models.RequireEmailVerification(), routes.RejFriendship)
 
