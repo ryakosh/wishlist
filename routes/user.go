@@ -29,8 +29,8 @@ func LoginUser(c *gin.Context) { // TODO: Don't forget about CSRF attacks
 	}
 
 	// TODO: User should not be able to authenticate when they are authenticated already
-	c.JSON(http.StatusOK, gin.H{
-		"token": token,
+	c.JSON(token.Status, gin.H{
+		"token": token.View,
 	})
 }
 
@@ -51,7 +51,7 @@ func CreateUser(c *gin.Context) {
 
 		return
 	}
-	c.JSON(http.StatusCreated, view)
+	c.JSON(view.Status, view.View)
 }
 
 // ReadUser is a route handler that is used to get general information about a user
@@ -67,7 +67,7 @@ func ReadUser(c *gin.Context) {
 
 		return
 	}
-	c.JSON(http.StatusOK, view)
+	c.JSON(view.Status, view.View)
 }
 
 // UpdateUser is a route handler that is used to update general information about a user
@@ -88,8 +88,8 @@ func UpdateUser(c *gin.Context) {
 		return
 	}
 
-	view := models.UpdateUser(&b, authedUser)
-	c.JSON(http.StatusOK, view)
+	view, _ := models.UpdateUser(&b, authedUser)
+	c.JSON(view.Status, view.View)
 }
 
 // DeleteUser is a route handler that is used for user deletion
@@ -105,8 +105,8 @@ func DeleteUser(c *gin.Context) {
 		return
 	}
 
-	models.DeleteUser(authedUser)
-	c.Status(http.StatusOK)
+	view, _ := models.DeleteUser(authedUser)
+	c.Status(view.Status)
 }
 
 // VerifyUserEmail is a route handler that is used to verify user's email address using
@@ -129,7 +129,7 @@ func VerifyUserEmail(c *gin.Context) {
 		return
 	}
 
-	err := models.VerifyUserEmail(&b, authedUser)
+	view, err := models.VerifyUserEmail(&b, authedUser)
 	if err != nil {
 		err := err.(*models.RequestError)
 		c.JSON(err.Status, gin.H{
@@ -139,7 +139,7 @@ func VerifyUserEmail(c *gin.Context) {
 		return
 	}
 
-	c.Status(http.StatusOK)
+	c.Status(view.Status)
 }
 
 // ReqFriendship is a route handler that is used to request friendship from another
@@ -172,7 +172,7 @@ func ReqFriendship(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, view)
+	c.JSON(view.Status, view.View)
 }
 
 // UnReqFriendship is a route handler that is used to delete a friendship request
@@ -204,7 +204,7 @@ func UnReqFriendship(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, view)
+	c.JSON(view.Status, view.View)
 }
 
 // AccFriendship is a route handler that is used to accept a friendship
@@ -237,7 +237,7 @@ func AccFriendship(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, view)
+	c.JSON(view.Status, view.View)
 }
 
 // RejFriendship is a route handler that is used to reject a friendship
@@ -270,7 +270,7 @@ func RejFriendship(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, view)
+	c.JSON(view.Status, view.View)
 }
 
 // CountFriendRequests is a route hander that is used to count user's friend requests
@@ -286,9 +286,9 @@ func CountFriendRequests(c *gin.Context) {
 		return
 	}
 
-	view := models.CountFriendRequests(authedUser)
+	view, _ := models.CountFriendRequests(authedUser)
 
-	c.JSON(http.StatusOK, view)
+	c.JSON(view.Status, view.View)
 }
 
 // CountFriends is a route hander that is used to count user's friends
@@ -304,9 +304,9 @@ func CountFriends(c *gin.Context) {
 		return
 	}
 
-	view := models.CountFriends(authedUser)
+	view, _ := models.CountFriends(authedUser)
 
-	c.JSON(http.StatusOK, view)
+	c.JSON(view.Status, view.View)
 }
 
 // ReadFriends is a route hander that is used to get user's friends
@@ -329,9 +329,9 @@ func ReadFriends(c *gin.Context) {
 		return
 	}
 
-	view := models.ReadFriends(page, authedUser)
+	view, _ := models.ReadFriends(page, authedUser)
 
-	c.JSON(http.StatusOK, view)
+	c.JSON(view.Status, view.View)
 }
 
 // ReadFriendRequests is a route hander that is used to get user's friend
@@ -355,9 +355,9 @@ func ReadFriendRequests(c *gin.Context) {
 		return
 	}
 
-	view := models.ReadFriendRequests(page, authedUser)
+	view, _ := models.ReadFriendRequests(page, authedUser)
 
-	c.JSON(http.StatusOK, view)
+	c.JSON(view.Status, view.View)
 }
 
 func areIDAndAuthedUserSame(id string, authedUser string, c *gin.Context) bool {

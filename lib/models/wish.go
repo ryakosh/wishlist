@@ -27,7 +27,7 @@ type Wish struct {
 }
 
 // CreateWish is used to add a wish to the database
-func CreateWish(b *bindings.CWish, authedUser string) *views.CWish {
+func CreateWish(b *bindings.CWish, authedUser string) (*Success, error) {
 	wish := Wish{
 		UserID:      authedUser,
 		Name:        b.Name,
@@ -38,29 +38,35 @@ func CreateWish(b *bindings.CWish, authedUser string) *views.CWish {
 
 	lib.DB.Create(&wish)
 
-	return &views.CWish{
-		ID:          wish.ID,
-		Name:        wish.Name,
-		Description: wish.Description,
-		Link:        wish.Link,
-		Image:       wish.Image,
-	}
+	return &Success{
+		Status: http.StatusCreated,
+		View: &views.CWish{
+			ID:          wish.ID,
+			Name:        wish.Name,
+			Description: wish.Description,
+			Link:        wish.Link,
+			Image:       wish.Image,
+		},
+	}, nil
 }
 
 // ReadWish is used to get general information about a wish in the database
-func ReadWish(id uint64) (*views.RWish, error) {
+func ReadWish(id uint64) (*Success, error) {
 	var wish Wish
 
 	db := lib.DB.Omit("fulfilled_by, created_at, updated_at").First(&wish, id)
 
 	if !db.RecordNotFound() {
-		return &views.RWish{
-			ID:          wish.ID,
-			UserID:      wish.UserID,
-			Name:        wish.Name,
-			Description: wish.Description,
-			Link:        wish.Link,
-			Image:       wish.Image,
+		return &Success{
+			Status: http.StatusOK,
+			View: &views.RWish{
+				ID:          wish.ID,
+				UserID:      wish.UserID,
+				Name:        wish.Name,
+				Description: wish.Description,
+				Link:        wish.Link,
+				Image:       wish.Image,
+			},
 		}, nil
 	}
 	return nil, &RequestError{
@@ -70,7 +76,7 @@ func ReadWish(id uint64) (*views.RWish, error) {
 }
 
 // UpdateWish is used to update wish's general information in the database
-func UpdateWish(id uint64, b *bindings.UWish, authedUser string) (*views.UWish, error) {
+func UpdateWish(id uint64, b *bindings.UWish, authedUser string) (*Success, error) {
 	var wish Wish
 
 	db := lib.DB.Select("id, user_id").First(&wish, id)
@@ -83,12 +89,15 @@ func UpdateWish(id uint64, b *bindings.UWish, authedUser string) (*views.UWish, 
 				Image:       b.Image,
 			})
 
-			return &views.UWish{
-				ID:          id,
-				Name:        b.Name,
-				Description: b.Description,
-				Link:        b.Link,
-				Image:       b.Image,
+			return &Success{
+				Status: http.StatusOK,
+				View: &views.UWish{
+					ID:          id,
+					Name:        b.Name,
+					Description: b.Description,
+					Link:        b.Link,
+					Image:       b.Image,
+				},
 			}, nil
 		}
 
@@ -105,23 +114,25 @@ func UpdateWish(id uint64, b *bindings.UWish, authedUser string) (*views.UWish, 
 }
 
 // DeleteWish is used to delete a wish from the database
-func DeleteWish(id uint64, authedUser string) error {
+func DeleteWish(id uint64, authedUser string) (*Success, error) {
 	var wish Wish
 
 	db := lib.DB.Select("id, user_id").First(&wish, id)
 	if !db.RecordNotFound() {
 		if wish.UserID == authedUser {
 			lib.DB.Delete(wish)
-			return nil
+			return &Success{
+				Status: http.StatusOK,
+			}, nil
 		}
 
-		return &RequestError{
+		return nil, &RequestError{
 			Status: http.StatusUnauthorized,
 			Err:    ErrUserNotAuthorized,
 		}
 	}
 
-	return &RequestError{
+	return nil, &RequestError{
 		Status: http.StatusNotFound,
 		Err:    ErrWishNotFound,
 	}

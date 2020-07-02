@@ -87,7 +87,7 @@ func (u *User) AfterDelete(tx *gorm.DB) error {
 }
 
 // CreateUser is used to register/add a user to the database
-func CreateUser(b *bindings.CUser) (*views.CUser, error) {
+func CreateUser(b *bindings.CUser) (*Success, error) {
 	var user User
 
 	db := lib.DB.Where("id = ?", b.ID).Or("email = ?", b.Email).First(&user)
@@ -116,7 +116,7 @@ func CreateUser(b *bindings.CUser) (*views.CUser, error) {
 			return nil, err
 		}
 
-		mail, err := email.GenEmailConfirmMail(user.ID, code)
+		mail, err := email.GenEmailConfirmMail(user.ID, code.View.(string))
 		if err != nil {
 			log.Printf("error: Could not generate email confirmation mail\n\treason: %s\n", err)
 			return nil, &RequestError{
@@ -134,11 +134,14 @@ func CreateUser(b *bindings.CUser) (*views.CUser, error) {
 			}
 		}
 
-		return &views.CUser{
-			ID:        user.ID,
-			Email:     user.Email,
-			FirstName: user.FirstName,
-			LastName:  user.LastName,
+		return &Success{
+			Status: http.StatusCreated,
+			View: &views.CUser{
+				ID:        user.ID,
+				Email:     user.Email,
+				FirstName: user.FirstName,
+				LastName:  user.LastName,
+			},
 		}, nil
 	}
 
@@ -149,15 +152,18 @@ func CreateUser(b *bindings.CUser) (*views.CUser, error) {
 }
 
 // ReadUser is used to get general information about a user in the database
-func ReadUser(id string) (*views.RUser, error) {
+func ReadUser(id string) (*Success, error) {
 	var user User
 
 	db := lib.DB.Select("id, first_name, last_name").Where("id = ?", id).First(&user)
 	if !db.RecordNotFound() {
-		return &views.RUser{
-			ID:        user.ID,
-			FirstName: user.FirstName,
-			LastName:  user.LastName,
+		return &Success{
+			Status: http.StatusOK,
+			View: &views.RUser{
+				ID:        user.ID,
+				FirstName: user.FirstName,
+				LastName:  user.LastName,
+			},
 		}, nil
 	}
 
@@ -168,7 +174,7 @@ func ReadUser(id string) (*views.RUser, error) {
 }
 
 // UpdateUser is used to update user's general information
-func UpdateUser(b *bindings.UUser, authedUser string) *views.UUser {
+func UpdateUser(b *bindings.UUser, authedUser string) (*Success, error) {
 	user := User{
 		ID: authedUser,
 	}
@@ -178,31 +184,41 @@ func UpdateUser(b *bindings.UUser, authedUser string) *views.UUser {
 		LastName:  b.LastName,
 	})
 
-	return &views.UUser{
-		FirstName: b.FirstName,
-		LastName:  b.LastName,
-	}
+	return &Success{
+		Status: http.StatusOK,
+		View: &views.UUser{
+			FirstName: b.FirstName,
+			LastName:  b.LastName,
+		},
+	}, nil
 }
 
 // DeleteUser is used to delete a user from the database
-func DeleteUser(authedUser string) {
+func DeleteUser(authedUser string) (*Success, error) {
 	user := &User{
 		ID: authedUser,
 	}
 
 	lib.DB.Delete(user)
+
+	return &Success{
+		Status: http.StatusOK,
+	}, nil
 }
 
 // LoginUser is used for user authentication
-func LoginUser(b *bindings.LoginUser) (string, error) {
+func LoginUser(b *bindings.LoginUser) (*Success, error) {
 	var user User
 
 	db := lib.DB.Select("id, email, password, is_email_verified").Where("id = ?", b.ID).First(&user)
 	if !db.RecordNotFound() && verifyPassword(b.Password, user.Password) {
-		return lib.Encode(user.ID, user.Email), nil
+		return &Success{
+			Status: http.StatusOK,
+			View:   lib.Encode(user.ID, user.Email),
+		}, nil
 	}
 
-	return "", &RequestError{
+	return nil, &RequestError{
 		Status: http.StatusNotFound,
 		Err:    ErrUnmOrPwdIncorrect,
 	}
@@ -228,13 +244,13 @@ func verifyPassword(password string, hash string) bool {
 
 // VerifyUserEmail is used to verify user's email address using
 // the generated safe random code
-func VerifyUserEmail(b *bindings.VerifyUserEmail, authedUser string) error {
+func VerifyUserEmail(b *bindings.VerifyUserEmail, authedUser string) (*Success, error) {
 	var user User
 
 	lib.DB.Select("is_email_verified").Where("id = ?", authedUser).First(&user)
 
 	if user.IsEmailVerified {
-		return &RequestError{
+		return nil, &RequestError{
 			Status: http.StatusOK,
 			Err:    ErrEmailVerified,
 		}
@@ -242,19 +258,21 @@ func VerifyUserEmail(b *bindings.VerifyUserEmail, authedUser string) error {
 
 	isMatch, err := VerifyCode(authedUser, b.Code)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	if isMatch {
+	if isMatch.View.(bool) {
 		lib.DB.Model(&User{ID: authedUser}).Update("is_email_verified", true)
 	}
 
-	return nil
+	return &Success{
+		Status: http.StatusOK,
+	}, nil
 }
 
 // ReqFriendship is used to request friendship from another user in the
 // database
-func ReqFriendship(b *bindings.Requestee, authedUser string) (*views.Requestee, error) {
+func ReqFriendship(b *bindings.Requestee, authedUser string) (*Success, error) {
 	var requestee User
 	var friendsCount uint8
 	var friendRequestsCount uint8
@@ -292,13 +310,16 @@ func ReqFriendship(b *bindings.Requestee, authedUser string) (*views.Requestee, 
 		}
 	}
 
-	return &views.Requestee{
-		Requestee: requestee.ID,
+	return &Success{
+		Status: http.StatusOK,
+		View: &views.Requestee{
+			Requestee: requestee.ID,
+		},
 	}, nil
 }
 
 // UnReqFriendship is used to delete user's friendship request
-func UnReqFriendship(b *bindings.Requestee, authedUser string) (*views.Requestee, error) {
+func UnReqFriendship(b *bindings.Requestee, authedUser string) (*Success, error) {
 	c := lib.DB.Model(&User{ID: b.Requestee}).Where("requester_id = ?", authedUser).Association("FriendRequests").Count()
 	if c != 1 {
 		return nil, &RequestError{
@@ -316,14 +337,17 @@ func UnReqFriendship(b *bindings.Requestee, authedUser string) (*views.Requestee
 		}
 	}
 
-	return &views.Requestee{
-		Requestee: b.Requestee,
+	return &Success{
+		Status: http.StatusOK,
+		View: &views.Requestee{
+			Requestee: b.Requestee,
+		},
 	}, nil
 }
 
 // AccFriendship is used to accept a friendship request from another user
 // that has been previously requested for friendship
-func AccFriendship(b *bindings.Requestee, authedUser string) (*views.Requestee, error) {
+func AccFriendship(b *bindings.Requestee, authedUser string) (*Success, error) {
 	var requestees []User
 
 	lib.DB.Model(&User{ID: authedUser}).Select("id").Where(
@@ -363,14 +387,17 @@ func AccFriendship(b *bindings.Requestee, authedUser string) (*views.Requestee, 
 		}
 	}
 
-	return &views.Requestee{
-		Requestee: requestees[0].ID,
+	return &Success{
+		Status: http.StatusOK,
+		View: &views.Requestee{
+			Requestee: requestees[0].ID,
+		},
 	}, nil
 }
 
 // RejFriendship is used to reject a friendship request from another user
 // that has been previously requested for friendship
-func RejFriendship(b *bindings.Requestee, authedUser string) (*views.Requestee, error) {
+func RejFriendship(b *bindings.Requestee, authedUser string) (*Success, error) {
 	var requestees []User
 
 	lib.DB.Model(&User{ID: authedUser}).Select("id").Where(
@@ -392,31 +419,40 @@ func RejFriendship(b *bindings.Requestee, authedUser string) (*views.Requestee, 
 		}
 	}
 
-	return &views.Requestee{
-		Requestee: requestees[0].ID,
+	return &Success{
+		Status: http.StatusOK,
+		View: &views.Requestee{
+			Requestee: requestees[0].ID,
+		},
 	}, nil
 }
 
 // CountFriendRequests is used to count user's friend requests
-func CountFriendRequests(authedUser string) *views.CountFriends {
+func CountFriendRequests(authedUser string) (*Success, error) {
 	count := lib.DB.Model(&User{ID: authedUser}).Association("FriendRequests").Count()
 
-	return &views.CountFriends{
-		Count: count,
-	}
+	return &Success{
+		Status: http.StatusOK,
+		View: &views.CountFriends{
+			Count: count,
+		},
+	}, nil
 }
 
 // CountFriends is used to count user's friends
-func CountFriends(authedUser string) *views.CountFriends {
+func CountFriends(authedUser string) (*Success, error) {
 	count := lib.DB.Model(&User{ID: authedUser}).Association("Friends").Count()
 
-	return &views.CountFriends{
-		Count: count,
-	}
+	return &Success{
+		Status: http.StatusOK,
+		View: &views.CountFriends{
+			Count: count,
+		},
+	}, nil
 }
 
 // ReadFriends is used to get user's friends
-func ReadFriends(page uint64, authedUser string) *views.ReadFriends {
+func ReadFriends(page uint64, authedUser string) (*Success, error) {
 	var friends []User
 	var vs []*views.RUser
 
@@ -432,13 +468,16 @@ func ReadFriends(page uint64, authedUser string) *views.ReadFriends {
 		})
 	}
 
-	return &views.ReadFriends{
-		Friends: vs,
-	}
+	return &Success{
+		Status: http.StatusOK,
+		View: &views.ReadFriends{
+			Friends: vs,
+		},
+	}, nil
 }
 
 // ReadFriendRequests is used to get user's friend requests
-func ReadFriendRequests(page uint64, authedUser string) *views.ReadFriendRequests {
+func ReadFriendRequests(page uint64, authedUser string) (*Success, error) {
 	var reqs []User
 	var vs []*views.RUser
 
@@ -454,9 +493,12 @@ func ReadFriendRequests(page uint64, authedUser string) *views.ReadFriendRequest
 		})
 	}
 
-	return &views.ReadFriendRequests{
-		Requesters: vs,
-	}
+	return &Success{
+		Status: http.StatusOK,
+		View: &views.ReadFriendRequests{
+			Requesters: vs,
+		},
+	}, nil
 }
 
 // Authenticate is a middleware that is used to authenticate users

@@ -40,13 +40,13 @@ type Code struct {
 }
 
 // CreateCode is used to create a new safe random code in the database
-func CreateCode(username string) (string, error) {
+func CreateCode(username string) (*Success, error) {
 	var user User
 	var code Code
 
 	db := lib.DB.Select("id").Where("id = ?", username).First(&user)
 	if db.RecordNotFound() {
-		return "", &RequestError{
+		return nil, &RequestError{
 			Status: http.StatusNotFound,
 			Err:    ErrUserNotFound,
 		}
@@ -58,7 +58,7 @@ func CreateCode(username string) (string, error) {
 		deadline := code.CreatedAt.UTC().Add(CodeTTL)
 
 		if !now.After(deadline) {
-			return "", &RequestError{
+			return nil, &RequestError{
 				Status: http.StatusConflict,
 				Err:    ErrCodeExists,
 			}
@@ -69,7 +69,7 @@ func CreateCode(username string) (string, error) {
 
 	randCode, err := lib.GenRandCode(10)
 	if err != nil {
-		return "", &ServerError{
+		return nil, &ServerError{
 			Status: http.StatusInternalServerError,
 			Reason: err,
 		}
@@ -82,17 +82,20 @@ func CreateCode(username string) (string, error) {
 
 	lib.DB.Create(&code)
 
-	return code.Code, nil
+	return &Success{
+		Status: http.StatusCreated,
+		View:   code.Code,
+	}, nil
 }
 
 // VerifyCode is used to compare the provided random code by user
 // with the random code in the database
-func VerifyCode(username string, randCode string) (bool, error) {
+func VerifyCode(username string, randCode string) (*Success, error) {
 	var code Code
 
 	db := lib.DB.Select("user_id, code, retry_count, created_at").Where("user_id = ?", username).First(&code)
 	if db.RecordNotFound() {
-		return false, &RequestError{
+		return nil, &RequestError{
 			Status: http.StatusNotFound,
 			Err:    ErrCodeNotFound,
 		}
@@ -103,7 +106,7 @@ func VerifyCode(username string, randCode string) (bool, error) {
 	if code.RetryCount == CodeMaxRetries || now.After(deadline) {
 		lib.DB.Delete(&code)
 
-		return false, &RequestError{
+		return nil, &RequestError{
 			Status: http.StatusNotFound,
 			Err:    ErrCodeNotFound,
 		}
@@ -113,14 +116,18 @@ func VerifyCode(username string, randCode string) (bool, error) {
 		rc := code.RetryCount + 1
 		lib.DB.Model(&code).Update("retry_count", rc)
 
-		return false, &RequestError{
+		return nil, &RequestError{
 			Status: http.StatusOK,
 			Err:    ErrCodeNotMatch,
 		}
 	}
 
 	lib.DB.Delete(&code)
-	return true, nil
+
+	return &Success{
+		Status: http.StatusOK,
+		View:   true,
+	}, nil
 }
 
 func init() {

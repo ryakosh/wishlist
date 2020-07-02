@@ -22,8 +22,8 @@ func CreateWish(c *gin.Context) {
 		return
 	}
 
-	view := models.CreateWish(&b, authedUser)
-	c.JSON(http.StatusOK, view)
+	view, _ := models.CreateWish(&b, authedUser)
+	c.JSON(view.Status, view.View)
 }
 
 // ReadWish is a route hander that is used to get general information about a wish
@@ -44,7 +44,7 @@ func ReadWish(c *gin.Context) {
 
 		return
 	}
-	c.JSON(http.StatusOK, view)
+	c.JSON(view.Status, view.View)
 }
 
 // UpdateWish is a route handler that is used to update general information about a wish
@@ -77,7 +77,7 @@ func UpdateWish(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, view)
+	c.JSON(view.Status, view.View)
 }
 
 // DeleteWish is a route handler that is used for wish deletion
@@ -94,7 +94,7 @@ func DeleteWish(c *gin.Context) {
 		return
 	}
 
-	err = models.DeleteWish(id, authedUser)
+	view, err := models.DeleteWish(id, authedUser)
 	if err != nil {
 		err := err.(*models.RequestError)
 		c.JSON(err.Status, gin.H{
@@ -104,5 +104,5 @@ func DeleteWish(c *gin.Context) {
 		return
 	}
 
-	c.Status(http.StatusOK)
+	c.Status(view.Status)
 }
