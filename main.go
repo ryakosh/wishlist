@@ -32,6 +32,7 @@ func init() {
 	gin.DefaultWriter = ginLog
 
 	r = gin.Default()
+	r.Use(AccessLogger())
 
 	r.POST("/login", routes.LoginUser)
 	users := r.Group("/users")
