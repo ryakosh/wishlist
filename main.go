@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/gin-gonic/gin"
+	"github.com/ryakosh/wishlist/lib"
 	"github.com/ryakosh/wishlist/lib/models"
 	"github.com/ryakosh/wishlist/routes"
 )
@@ -18,14 +19,15 @@ func main() {
 func init() {
 	serverLog, err := os.OpenFile("server.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0600)
 	if err != nil {
-		log.Fatalf("error: Could not create log file\n\treason: %s\n", err)
+		lib.LogError(lib.LFatal, "Could not create log file", err)
+
 	}
 	log.SetOutput(serverLog)
 
 	gin.DisableConsoleColor()
 	ginLog, err := os.OpenFile("gin.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0600)
 	if err != nil {
-		log.Fatalf("error: Could not create log file\n\treason: %s\n", err)
+		lib.LogError(lib.LFatal, "Could not create log file", err)
 	}
 	gin.DefaultWriter = ginLog
 

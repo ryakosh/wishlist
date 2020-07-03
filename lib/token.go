@@ -4,7 +4,6 @@ import (
 	"crypto/rsa"
 	"errors"
 	"io/ioutil"
-	"log"
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
@@ -44,7 +43,7 @@ func Encode(sub, email string) string {
 
 	token, err := encodeToken.SignedString(privateKey)
 	if err != nil {
-		log.Panicf("error: Could not encode token\n\treason: %s", err)
+		LogError(LPanic, "Could not encode token", err)
 	}
 
 	return token
@@ -88,22 +87,21 @@ func HasExpired(err error) bool {
 func init() {
 	prv, err := ioutil.ReadFile("./secrets/private.pem")
 	if err != nil {
-		log.Fatalf("error: Could not read './secrets/private.pem' file\n\treason: %s", err)
+		LogError(LFatal, "Could not read './secrets/private.pem' file", err)
 	}
 
 	privateKey, err = jwt.ParseRSAPrivateKeyFromPEM(prv)
 	if err != nil {
-		log.Fatalf("error: Could not parse './secrets/private.pem'\n\treason: %s", err)
+		LogError(LFatal, "Could not parse './secrets/private.pem'", err)
 	}
 
 	pub, err := ioutil.ReadFile("./secrets/public.pem")
 	if err != nil {
-		log.Fatalf("error: Could not read './secrets/public.pem' file\n\treason: %s", err)
+		LogError(LFatal, "Could not read './secrets/public.pem' file", err)
 	}
 
 	publicKey, err = jwt.ParseRSAPublicKeyFromPEM(pub)
 	if err != nil {
-		log.Fatalf("error: Could not parse './secrets/public.pem'\n\treason: %s", err)
-
+		LogError(LFatal, "Could not parse './secrets/public.pem'", err)
 	}
 }

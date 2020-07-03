@@ -2,7 +2,6 @@ package models
 
 import (
 	"errors"
-	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -80,8 +79,16 @@ type User struct {
 
 // AfterDelete is used to clean up after the user got deleted
 func (u *User) AfterDelete(tx *gorm.DB) error {
-	lib.DB.Where("user_id = ?", u.ID).Delete(&Wish{})
-	lib.DB.Where("user_id = ?", u.ID).Delete(&Code{})
+	db := lib.DB.Where("user_id = ?", u.ID).Delete(&Wish{})
+	if db.Error != nil {
+		lib.LogError(lib.LPanic, "Could not delete user's wishes", db.Error)
+	}
+
+	db = lib.DB.Where("user_id = ?", u.ID).Delete(&Code{})
+	if db.Error != nil {
+		lib.LogError(lib.LPanic, "Could not delete user's code", db.Error)
+
+	}
 
 	return nil
 }
@@ -91,64 +98,69 @@ func CreateUser(b *bindings.CUser) (*Success, error) {
 	var user User
 
 	db := lib.DB.Where("id = ?", b.ID).Or("email = ?", b.Email).First(&user)
-	if db.RecordNotFound() {
-		user = User{
-			ID:        b.ID,
-			Email:     b.Email,
-			Password:  genPasswordHash(b.Password),
-			FirstName: b.FirstName,
-			LastName:  b.LastName,
+	if db.Error != nil && !gorm.IsRecordNotFoundError(db.Error) {
+		lib.LogError(lib.LPanic, "Could not read user", db.Error)
+	} else if !db.RecordNotFound() {
+		return nil, &RequestError{
+			Status: http.StatusConflict,
+			Err:    ErrUserExists,
 		}
+	}
 
-		lib.DB.Create(&user)
+	user = User{
+		ID:        b.ID,
+		Email:     b.Email,
+		Password:  genPasswordHash(b.Password),
+		FirstName: b.FirstName,
+		LastName:  b.LastName,
+	}
 
-		code, err := CreateCode(user.ID)
-		if err != nil {
-			se, ok := err.(*ServerError)
-			if ok {
-				log.Printf("error: Could not generate email confirmation mail\n\treason: %s\n", err)
-				return nil, &RequestError{
-					Status: se.Status,
-					Err:    email.ErrSendMail,
-				}
-			}
+	db = lib.DB.Create(&user)
+	if db.Error != nil {
+		lib.LogError(lib.LPanic, "Could not create user", db.Error)
+	}
 
-			return nil, err
-		}
-
-		mail, err := email.GenEmailConfirmMail(user.ID, code.View.(string))
-		if err != nil {
-			log.Printf("error: Could not generate email confirmation mail\n\treason: %s\n", err)
+	code, err := CreateCode(user.ID)
+	if err != nil {
+		se, ok := err.(*ServerError)
+		if ok {
+			lib.LogError(lib.LError, "Could not generate email confirmation mail", se.Reason)
 			return nil, &RequestError{
-				Status: http.StatusInternalServerError,
+				Status: se.Status,
 				Err:    email.ErrSendMail,
 			}
 		}
 
-		err = email.Send(email.BotEmailEnv, user.Email, "لطفا ایمیل خود را تایید کنید [ویش لیست]", mail)
-		if err != nil {
-			log.Printf("error: Could not generate email confirmation mail\n\treason: %s\n", err)
-			return nil, &RequestError{
-				Status: http.StatusInternalServerError,
-				Err:    email.ErrSendMail,
-			}
+		return nil, err
+	}
+
+	mail, err := email.GenEmailConfirmMail(user.ID, code.View.(string))
+	if err != nil {
+		lib.LogError(lib.LError, "Could not generate email confirmation mail", err)
+		return nil, &RequestError{
+			Status: http.StatusInternalServerError,
+			Err:    email.ErrSendMail,
 		}
-
-		return &Success{
-			Status: http.StatusCreated,
-			View: &views.CUser{
-				ID:        user.ID,
-				Email:     user.Email,
-				FirstName: user.FirstName,
-				LastName:  user.LastName,
-			},
-		}, nil
 	}
 
-	return nil, &RequestError{
-		Status: http.StatusConflict,
-		Err:    ErrUserExists,
+	err = email.Send(email.BotEmailEnv, user.Email, "لطفا ایمیل خود را تایید کنید [ویش لیست]", mail)
+	if err != nil {
+		lib.LogError(lib.LError, "Could not generate email confirmation mail", err)
+		return nil, &RequestError{
+			Status: http.StatusInternalServerError,
+			Err:    email.ErrSendMail,
+		}
 	}
+
+	return &Success{
+		Status: http.StatusCreated,
+		View: &views.CUser{
+			ID:        user.ID,
+			Email:     user.Email,
+			FirstName: user.FirstName,
+			LastName:  user.LastName,
+		},
+	}, nil
 }
 
 // ReadUser is used to get general information about a user in the database
@@ -156,33 +168,34 @@ func ReadUser(id string) (*Success, error) {
 	var user User
 
 	db := lib.DB.Select("id, first_name, last_name").Where("id = ?", id).First(&user)
-	if !db.RecordNotFound() {
-		return &Success{
-			Status: http.StatusOK,
-			View: &views.RUser{
-				ID:        user.ID,
-				FirstName: user.FirstName,
-				LastName:  user.LastName,
-			},
-		}, nil
+	if db.Error != nil && !gorm.IsRecordNotFoundError(db.Error) {
+		lib.LogError(lib.LPanic, "Could not read user", db.Error)
+	} else if db.RecordNotFound() {
+		return nil, &RequestError{
+			Status: http.StatusNotFound,
+			Err:    ErrUserNotFound,
+		}
 	}
 
-	return nil, &RequestError{
-		Status: http.StatusNotFound,
-		Err:    ErrUserNotFound,
-	}
+	return &Success{
+		Status: http.StatusOK,
+		View: &views.RUser{
+			ID:        user.ID,
+			FirstName: user.FirstName,
+			LastName:  user.LastName,
+		},
+	}, nil
 }
 
 // UpdateUser is used to update user's general information
 func UpdateUser(b *bindings.UUser, authedUser string) (*Success, error) {
-	user := User{
-		ID: authedUser,
-	}
-
-	lib.DB.Model(&user).Updates(&User{
+	db := lib.DB.Model(&User{ID: authedUser}).Updates(&User{
 		FirstName: b.FirstName,
 		LastName:  b.LastName,
 	})
+	if db.Error != nil {
+		lib.LogError(lib.LPanic, "Could not update user", db.Error)
+	}
 
 	return &Success{
 		Status: http.StatusOK,
@@ -195,11 +208,10 @@ func UpdateUser(b *bindings.UUser, authedUser string) (*Success, error) {
 
 // DeleteUser is used to delete a user from the database
 func DeleteUser(authedUser string) (*Success, error) {
-	user := &User{
-		ID: authedUser,
+	db := lib.DB.Delete(&User{ID: authedUser})
+	if db.Error != nil {
+		lib.LogError(lib.LPanic, "Could not delete user", db.Error)
 	}
-
-	lib.DB.Delete(user)
 
 	return &Success{
 		Status: http.StatusOK,
@@ -210,24 +222,26 @@ func DeleteUser(authedUser string) (*Success, error) {
 func LoginUser(b *bindings.LoginUser) (*Success, error) {
 	var user User
 
-	db := lib.DB.Select("id, email, password, is_email_verified").Where("id = ?", b.ID).First(&user)
-	if !db.RecordNotFound() && verifyPassword(b.Password, user.Password) {
-		return &Success{
-			Status: http.StatusOK,
-			View:   lib.Encode(user.ID, user.Email),
-		}, nil
+	db := lib.DB.Select("id, email, password").Where("id = ?", b.ID).First(&user)
+	if db.Error != nil && !gorm.IsRecordNotFoundError(db.Error) {
+		lib.LogError(lib.LPanic, "Could not read user", db.Error)
+	} else if db.RecordNotFound() || !verifyPassword(b.Password, user.Password) {
+		return nil, &RequestError{
+			Status: http.StatusNotFound,
+			Err:    ErrUnmOrPwdIncorrect,
+		}
 	}
 
-	return nil, &RequestError{
-		Status: http.StatusNotFound,
-		Err:    ErrUnmOrPwdIncorrect,
-	}
+	return &Success{
+		Status: http.StatusOK,
+		View:   lib.Encode(user.ID, user.Email),
+	}, nil
 }
 
 func genPasswordHash(password string) string {
 	hash, err := argon2id.CreateHash(password, argonConfig)
 	if err != nil {
-		log.Panicf("error: Could not generate password's hash\n\treason: %s", err)
+		lib.LogError(lib.LPanic, "Could not generate password's hash", err)
 	}
 
 	return hash
@@ -236,7 +250,7 @@ func genPasswordHash(password string) string {
 func verifyPassword(password string, hash string) bool {
 	isMatch, err := argon2id.ComparePasswordAndHash(password, hash)
 	if err != nil {
-		log.Panicf("error: Could not verify password\n\treason: %s", err)
+		lib.LogError(lib.LPanic, "Could not verify password", err)
 	}
 
 	return isMatch
@@ -247,7 +261,15 @@ func verifyPassword(password string, hash string) bool {
 func VerifyUserEmail(b *bindings.VerifyUserEmail, authedUser string) (*Success, error) {
 	var user User
 
-	lib.DB.Select("is_email_verified").Where("id = ?", authedUser).First(&user)
+	db := lib.DB.Select("is_email_verified").Where("id = ?", authedUser).First(&user)
+	if db.Error != nil && !gorm.IsRecordNotFoundError(db.Error) {
+		lib.LogError(lib.LPanic, "Could not read user", db.Error)
+	} else if db.RecordNotFound() {
+		return nil, &RequestError{
+			Status: http.StatusNotFound,
+			Err:    ErrUserNotFound,
+		}
+	}
 
 	if user.IsEmailVerified {
 		return nil, &RequestError{
@@ -262,7 +284,10 @@ func VerifyUserEmail(b *bindings.VerifyUserEmail, authedUser string) (*Success, 
 	}
 
 	if isMatch.View.(bool) {
-		lib.DB.Model(&User{ID: authedUser}).Update("is_email_verified", true)
+		db := lib.DB.Model(&User{ID: authedUser}).Update("is_email_verified", true)
+		if db.Error != nil {
+			lib.LogError(lib.LPanic, "Could not update user", db.Error)
+		}
 	}
 
 	return &Success{
@@ -285,15 +310,25 @@ func ReqFriendship(b *bindings.Requestee, authedUser string) (*Success, error) {
 	}
 
 	db := lib.DB.Select("id").Where("id = ?", b.Requestee).First(&requestee)
-	if db.RecordNotFound() {
+	if db.Error != nil && !gorm.IsRecordNotFoundError(db.Error) {
+		lib.LogError(lib.LPanic, "Could not read user", db.Error)
+	} else if db.RecordNotFound() {
 		return nil, &RequestError{
 			Status: http.StatusNotFound,
 			Err:    ErrUserNotFound,
 		}
 	}
 
-	lib.DB.Table("friendrequests").Where("user_id = ? AND requester_id = ?", requestee.ID, authedUser).Count(&friendRequestsCount)
-	lib.DB.Table("friendships").Where("user_id = ? AND friend_id = ?", authedUser, requestee.ID).Count(&friendsCount)
+	db = lib.DB.Table("friendrequests").Where("user_id = ? AND requester_id = ?", requestee.ID, authedUser).Count(&friendRequestsCount)
+	if db.Error != nil && !gorm.IsRecordNotFoundError(db.Error) {
+		lib.LogError(lib.LPanic, "Could not read user", db.Error)
+	}
+
+	db = lib.DB.Table("friendships").Where("user_id = ? AND friend_id = ?", authedUser, requestee.ID).Count(&friendsCount)
+	if db.Error != nil && !gorm.IsRecordNotFoundError(db.Error) {
+		lib.LogError(lib.LPanic, "Could not read user", db.Error)
+	}
+
 	if friendRequestsCount != 0 || friendsCount != 0 {
 		return nil, &RequestError{
 			Status: http.StatusConflict,
@@ -303,11 +338,7 @@ func ReqFriendship(b *bindings.Requestee, authedUser string) (*Success, error) {
 
 	err := lib.DB.Model(&User{ID: requestee.ID}).Association("FriendRequests").Append(&User{ID: authedUser}).Error
 	if err != nil {
-		log.Printf("error: Could not request friendship\n\treason: %s", err)
-		return nil, &RequestError{
-			Status: http.StatusInternalServerError,
-			Err:    ErrInternalServer,
-		}
+		lib.LogError(lib.LPanic, "Could not request friendship", err)
 	}
 
 	return &Success{
@@ -330,11 +361,7 @@ func UnReqFriendship(b *bindings.Requestee, authedUser string) (*Success, error)
 
 	err := lib.DB.Model(&User{ID: b.Requestee}).Association("FriendRequests").Delete(&User{ID: authedUser}).Error
 	if err != nil {
-		log.Printf("error: Could not delete friendship request\n\treason: %s", err)
-		return nil, &RequestError{
-			Status: http.StatusInternalServerError,
-			Err:    ErrInternalServer,
-		}
+		lib.LogError(lib.LPanic, "Could not delete friendship request", err)
 	}
 
 	return &Success{
@@ -350,8 +377,11 @@ func UnReqFriendship(b *bindings.Requestee, authedUser string) (*Success, error)
 func AccFriendship(b *bindings.Requestee, authedUser string) (*Success, error) {
 	var requestees []User
 
-	lib.DB.Model(&User{ID: authedUser}).Select("id").Where(
+	db := lib.DB.Model(&User{ID: authedUser}).Select("id").Where(
 		"requester_id = ?", b.Requestee).Related(&requestees, "FriendRequests")
+	if db.Error != nil && !gorm.IsRecordNotFoundError(db.Error) {
+		lib.LogError(lib.LPanic, "Could not read user's friend requests", db.Error)
+	}
 
 	if len(requestees) != 1 {
 		return nil, &RequestError{
@@ -380,11 +410,7 @@ func AccFriendship(b *bindings.Requestee, authedUser string) (*Success, error) {
 	})
 
 	if err != nil {
-		log.Printf("error: Could not accept friendship\n\treason: %s", err)
-		return nil, &RequestError{
-			Status: http.StatusInternalServerError,
-			Err:    ErrInternalServer,
-		}
+		lib.LogError(lib.LPanic, " Could not accept friendship", err)
 	}
 
 	return &Success{
@@ -400,8 +426,11 @@ func AccFriendship(b *bindings.Requestee, authedUser string) (*Success, error) {
 func RejFriendship(b *bindings.Requestee, authedUser string) (*Success, error) {
 	var requestees []User
 
-	lib.DB.Model(&User{ID: authedUser}).Select("id").Where(
+	db := lib.DB.Model(&User{ID: authedUser}).Select("id").Where(
 		"requester_id = ?", b.Requestee).Related(&requestees, "FriendRequests")
+	if db.Error != nil && !gorm.IsRecordNotFoundError(db.Error) {
+		lib.LogError(lib.LPanic, "Could not read user's friend requests", db.Error)
+	}
 
 	if len(requestees) != 1 {
 		return nil, &RequestError{
@@ -409,14 +438,10 @@ func RejFriendship(b *bindings.Requestee, authedUser string) (*Success, error) {
 			Err:    ErrUserNotFound,
 		}
 	}
-	err := lib.DB.Model(&User{ID: authedUser}).Association("FriendRequests").Delete(requestees[0]).Error
 
+	err := lib.DB.Model(&User{ID: authedUser}).Association("FriendRequests").Delete(requestees[0]).Error
 	if err != nil {
-		log.Printf("error: Could not reject friendship\n\treason: %s", err)
-		return nil, &RequestError{
-			Status: http.StatusInternalServerError,
-			Err:    ErrInternalServer,
-		}
+		lib.LogError(lib.LPanic, "Could not reject friendship", err)
 	}
 
 	return &Success{
@@ -456,9 +481,12 @@ func ReadFriends(page uint64, authedUser string) (*Success, error) {
 	var friends []User
 	var vs []*views.RUser
 
-	lib.DB.Model(&User{ID: authedUser}).Select(
+	db := lib.DB.Model(&User{ID: authedUser}).Select(
 		"id, first_name, last_name").Offset(
 		(page * 10) - 10).Limit(10).Association("Friends").Find(&friends)
+	if db.Error != nil && !gorm.IsRecordNotFoundError(db.Error) {
+		lib.LogError(lib.LPanic, "Could not read user's friends", db.Error)
+	}
 
 	for _, u := range friends {
 		vs = append(vs, &views.RUser{
@@ -481,9 +509,12 @@ func ReadFriendRequests(page uint64, authedUser string) (*Success, error) {
 	var reqs []User
 	var vs []*views.RUser
 
-	lib.DB.Model(&User{ID: authedUser}).Select(
+	db := lib.DB.Model(&User{ID: authedUser}).Select(
 		"id, first_name, last_name").Offset(
 		(page * 10) - 10).Limit(10).Association("FriendRequests").Find(&reqs)
+	if db.Error != nil && !gorm.IsRecordNotFoundError(db.Error) {
+		lib.LogError(lib.LPanic, "Could not read user's friend requests", db.Error)
+	}
 
 	for _, u := range reqs {
 		vs = append(vs, &views.RUser{
@@ -526,15 +557,17 @@ func Authenticate() gin.HandlerFunc {
 			sub := claims["sub"]
 
 			db := lib.DB.Select("id").Where("id = ? AND email = ?", sub, claims["email"]).First(&user)
-			if !db.RecordNotFound() {
-				c.Set(UserKey, sub)
-				c.Next()
+			if db.Error != nil && !gorm.IsRecordNotFoundError(db.Error) {
+				lib.LogError(lib.LPanic, "Could not read user", db.Error)
+			} else if db.RecordNotFound() {
+				c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
+					"error": ErrUserNotFound.Error(),
+				})
 				return
 			}
 
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
-				"error": ErrUserNotFound.Error(),
-			})
+			c.Set(UserKey, sub)
+			c.Next()
 		} else if lib.IsMalformed(err) {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
 				"error": lib.ErrTokenIsMalformed.Error(),
@@ -566,7 +599,10 @@ func RequireEmailVerification() gin.HandlerFunc {
 		}
 
 		var user User
-		lib.DB.Select("is_email_verified").Where("id = ?", authedUser).First(&user)
+		db := lib.DB.Select("is_email_verified").Where("id = ?", authedUser).First(&user)
+		if db.Error != nil && !gorm.IsRecordNotFoundError(db.Error) {
+			lib.LogError(lib.LPanic, "Could not read user", db.Error)
+		}
 
 		if !user.IsEmailVerified {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{

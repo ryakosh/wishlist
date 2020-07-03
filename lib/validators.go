@@ -1,7 +1,6 @@
 package lib
 
 import (
-	"errors"
 	"regexp"
 
 	"github.com/gin-gonic/gin/binding"
@@ -25,6 +24,6 @@ func init() {
 	if v, ok := binding.Validator.Engine().(*validator.Validate); ok {
 		v.RegisterValidation("username", username)
 	} else {
-		panic(errors.New("Error: Could not register validator"))
+		LogError(LFatal, "Could not register validator", nil)
 	}
 }

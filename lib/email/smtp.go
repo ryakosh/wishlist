@@ -2,9 +2,10 @@ package email
 
 import (
 	"errors"
-	"log"
 	"net/smtp"
 	"os"
+
+	"github.com/ryakosh/wishlist/lib"
 )
 
 // ErrSendMail is returned when the server could not generate or send
@@ -36,11 +37,11 @@ func Send(email string, to string, sub string, msg string) error {
 func init() {
 	smtpServerEnv = os.Getenv("WISHLIST_SMTPSERVER")
 	if len(smtpServerEnv) == 0 {
-		log.Fatal("error: 'WISHLIST_SMTPSERVER' must be set")
+		lib.LogError(lib.LFatal, "'WISHLIST_SMTPSERVER' must be set", nil)
 	}
 
 	BotEmailEnv = os.Getenv("WISHLIST_BOTEMAIL")
 	if len(BotEmailEnv) == 0 {
-		log.Fatal("error: 'WISHLIST_BOTEMAIL' must be set")
+		lib.LogError(lib.LFatal, "'WISHLIST_BOTEMAIL' must be set", nil)
 	}
 }

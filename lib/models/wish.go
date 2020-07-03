@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/jinzhu/gorm"
 	"github.com/ryakosh/wishlist/lib"
 	"github.com/ryakosh/wishlist/lib/bindings"
 	"github.com/ryakosh/wishlist/lib/views"
@@ -36,7 +37,10 @@ func CreateWish(b *bindings.CWish, authedUser string) (*Success, error) {
 		Image:       b.Image,
 	}
 
-	lib.DB.Create(&wish)
+	db := lib.DB.Create(&wish)
+	if db.Error != nil {
+		lib.LogError(lib.LPanic, "Could not create wish", db.Error)
+	}
 
 	return &Success{
 		Status: http.StatusCreated,
@@ -55,24 +59,25 @@ func ReadWish(id uint64) (*Success, error) {
 	var wish Wish
 
 	db := lib.DB.Omit("fulfilled_by, created_at, updated_at").First(&wish, id)
-
-	if !db.RecordNotFound() {
-		return &Success{
-			Status: http.StatusOK,
-			View: &views.RWish{
-				ID:          wish.ID,
-				UserID:      wish.UserID,
-				Name:        wish.Name,
-				Description: wish.Description,
-				Link:        wish.Link,
-				Image:       wish.Image,
-			},
-		}, nil
+	if db.Error != nil && !gorm.IsRecordNotFoundError(db.Error) {
+		lib.LogError(lib.LPanic, "Could not read wish", db.Error)
+	} else if db.RecordNotFound() {
+		return nil, &RequestError{
+			Status: http.StatusNotFound,
+			Err:    ErrWishNotFound,
+		}
 	}
-	return nil, &RequestError{
-		Status: http.StatusNotFound,
-		Err:    ErrWishNotFound,
-	}
+	return &Success{
+		Status: http.StatusOK,
+		View: &views.RWish{
+			ID:          wish.ID,
+			UserID:      wish.UserID,
+			Name:        wish.Name,
+			Description: wish.Description,
+			Link:        wish.Link,
+			Image:       wish.Image,
+		},
+	}, nil
 }
 
 // UpdateWish is used to update wish's general information in the database
@@ -80,37 +85,42 @@ func UpdateWish(id uint64, b *bindings.UWish, authedUser string) (*Success, erro
 	var wish Wish
 
 	db := lib.DB.Select("id, user_id").First(&wish, id)
-	if !db.RecordNotFound() {
-		if wish.UserID == authedUser {
-			lib.DB.Model(&wish).Updates(&Wish{
-				Name:        b.Name,
-				Description: b.Description,
-				Link:        b.Link,
-				Image:       b.Image,
-			})
-
-			return &Success{
-				Status: http.StatusOK,
-				View: &views.UWish{
-					ID:          id,
-					Name:        b.Name,
-					Description: b.Description,
-					Link:        b.Link,
-					Image:       b.Image,
-				},
-			}, nil
+	if db.Error != nil && !gorm.IsRecordNotFoundError(db.Error) {
+		lib.LogError(lib.LPanic, "Could not read wish", db.Error)
+	} else if db.RecordNotFound() {
+		return nil, &RequestError{
+			Status: http.StatusNotFound,
+			Err:    ErrWishNotFound,
 		}
+	}
 
+	if wish.UserID != authedUser {
 		return nil, &RequestError{
 			Status: http.StatusUnauthorized,
 			Err:    ErrUserNotAuthorized,
 		}
 	}
 
-	return nil, &RequestError{
-		Status: http.StatusNotFound,
-		Err:    ErrWishNotFound,
+	db = lib.DB.Model(&wish).Updates(&Wish{
+		Name:        b.Name,
+		Description: b.Description,
+		Link:        b.Link,
+		Image:       b.Image,
+	})
+	if db.Error != nil {
+		lib.LogError(lib.LPanic, "Could not update wish", db.Error)
 	}
+
+	return &Success{
+		Status: http.StatusOK,
+		View: &views.UWish{
+			ID:          id,
+			Name:        b.Name,
+			Description: b.Description,
+			Link:        b.Link,
+			Image:       b.Image,
+		},
+	}, nil
 }
 
 // DeleteWish is used to delete a wish from the database
@@ -118,24 +128,29 @@ func DeleteWish(id uint64, authedUser string) (*Success, error) {
 	var wish Wish
 
 	db := lib.DB.Select("id, user_id").First(&wish, id)
-	if !db.RecordNotFound() {
-		if wish.UserID == authedUser {
-			lib.DB.Delete(wish)
-			return &Success{
-				Status: http.StatusOK,
-			}, nil
+	if db.Error != nil && !gorm.IsRecordNotFoundError(db.Error) {
+		lib.LogError(lib.LPanic, "Could not read wish", db.Error)
+	} else if db.RecordNotFound() {
+		return nil, &RequestError{
+			Status: http.StatusNotFound,
+			Err:    ErrWishNotFound,
 		}
-
+	}
+	if wish.UserID != authedUser {
 		return nil, &RequestError{
 			Status: http.StatusUnauthorized,
 			Err:    ErrUserNotAuthorized,
 		}
 	}
 
-	return nil, &RequestError{
-		Status: http.StatusNotFound,
-		Err:    ErrWishNotFound,
+	db = lib.DB.Delete(wish)
+	if db.Error != nil {
+		lib.LogError(lib.LPanic, "Could not delete wish", db.Error)
 	}
+
+	return &Success{
+		Status: http.StatusOK,
+	}, nil
 }
 
 func init() {
