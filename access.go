@@ -1,7 +1,6 @@
 package main
 
 import (
-	"io/ioutil"
 	"log"
 	"os"
 
@@ -12,20 +11,14 @@ import (
 var accessLog *log.Logger
 
 // AccessLogger is a middleware that is used to log information
-// about client's remote address, request's method, request's path and
-// request's body
+// about client's remote address, request's method and request's path
 func AccessLogger() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		remoteAddr := c.Request.RemoteAddr
 		method := c.Request.Method
 		path := c.Request.URL.Path
-		body, err := ioutil.ReadAll(c.Request.Body)
 
-		if err != nil {
-			lib.LogError(lib.LError, "Could not log request's body to access log", err)
-		}
-
-		accessLog.Printf("%s - %s - %s\n%s\n\n", remoteAddr, method, path, string(body))
+		accessLog.Printf("%s - %s - %s\n", remoteAddr, method, path)
 	}
 }
 
