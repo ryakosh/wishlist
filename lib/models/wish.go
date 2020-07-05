@@ -238,6 +238,108 @@ func AddClaimer(id uint64, authedUser string) (*Success, error) {
 	}, nil
 }
 
+func AcceptClaimer(id uint64, claimer string, authedUser string) (*Success, error) {
+	var wish Wish
+
+	db := lib.DB.Select("id, user_id").First(&wish, id)
+	if db.RecordNotFound() {
+		return nil, &RequestError{
+			Status: http.StatusNotFound,
+			Err:    ErrWishNotFound,
+		}
+	}
+
+	if authedUser != wish.UserID {
+		return nil, &RequestError{
+			Status: http.StatusUnauthorized,
+			Err:    ErrUserNotAuthorized,
+		}
+	}
+
+	count := lib.DB.Model(&wish).Where("user_id = ?", claimer).Association("Claimers").Count()
+	if count != 1 {
+		return nil, &RequestError{
+			Status: http.StatusNotFound,
+			Err:    ErrUserNotFound,
+		}
+	}
+
+	err := lib.DB.Transaction(func(tx *gorm.DB) error {
+		asso := tx.Model(&wish).Association("Fulfillers").Append(&User{ID: claimer})
+		if asso.Error != nil {
+			return asso.Error
+		}
+
+		asso = tx.Model(&wish).Association("Claimers").Delete(&User{ID: claimer})
+		if asso.Error != nil {
+			return asso.Error
+		}
+
+		return nil
+	})
+	if err != nil {
+		lib.LogError(lib.LPanic, "Could not accept fulfillment claim", err)
+	}
+
+	return &Success{
+		Status: http.StatusOK,
+		View: &views.WishID{
+			ID: id,
+		},
+	}, nil
+}
+
+func RejectClaimer(id uint64, claimer string, authedUser string) (*Success, error) {
+	var wish Wish
+
+	db := lib.DB.Select("id, user_id").First(&wish, id)
+	if db.RecordNotFound() {
+		return nil, &RequestError{
+			Status: http.StatusNotFound,
+			Err:    ErrWishNotFound,
+		}
+	}
+
+	if authedUser != wish.UserID {
+		return nil, &RequestError{
+			Status: http.StatusUnauthorized,
+			Err:    ErrUserNotAuthorized,
+		}
+	}
+
+	count := lib.DB.Model(&wish).Where("user_id = ?", claimer).Association("Claimers").Count()
+	if count != 1 {
+		return nil, &RequestError{
+			Status: http.StatusNotFound,
+			Err:    ErrUserNotFound,
+		}
+	}
+
+	err := lib.DB.Transaction(func(tx *gorm.DB) error {
+		asso := tx.Model(&wish).Association("WantToFulfill").Append(&User{ID: claimer})
+		if asso.Error != nil {
+			return asso.Error
+		}
+
+		asso = tx.Model(&wish).Association("Claimers").Delete(&User{ID: claimer})
+		if asso.Error != nil {
+			return asso.Error
+		}
+
+		return nil
+	})
+	if err != nil {
+		lib.LogError(lib.LPanic, "Could not reject fulfillment claim", err)
+	}
+
+	return &Success{
+		Status: http.StatusOK,
+		View: &views.WishID{
+			ID: id,
+		},
+	}, nil
+}
+
 func init() {
 	lib.DB.AutoMigrate(&Wish{})
 }
