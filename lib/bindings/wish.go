@@ -15,3 +15,7 @@ type UWish struct {
 	Link        string `json:"link" binding:"omitempty,url"`
 	Image       string `json:"image" binding:"omitempty,url"`
 }
+
+type Claimer struct {
+	ID string `json:"username" binding:"required,username,max=64"`
+}

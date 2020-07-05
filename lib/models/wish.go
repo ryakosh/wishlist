@@ -238,7 +238,7 @@ func AddClaimer(id uint64, authedUser string) (*Success, error) {
 	}, nil
 }
 
-func AcceptClaimer(id uint64, claimer string, authedUser string) (*Success, error) {
+func AcceptClaimer(id uint64, b *bindings.Claimer, authedUser string) (*Success, error) {
 	var wish Wish
 
 	db := lib.DB.Select("id, user_id").First(&wish, id)
@@ -256,7 +256,7 @@ func AcceptClaimer(id uint64, claimer string, authedUser string) (*Success, erro
 		}
 	}
 
-	count := lib.DB.Model(&wish).Where("user_id = ?", claimer).Association("Claimers").Count()
+	count := lib.DB.Model(&wish).Where("user_id = ?", b.ID).Association("Claimers").Count()
 	if count != 1 {
 		return nil, &RequestError{
 			Status: http.StatusNotFound,
@@ -265,12 +265,12 @@ func AcceptClaimer(id uint64, claimer string, authedUser string) (*Success, erro
 	}
 
 	err := lib.DB.Transaction(func(tx *gorm.DB) error {
-		asso := tx.Model(&wish).Association("Fulfillers").Append(&User{ID: claimer})
+		asso := tx.Model(&wish).Association("Fulfillers").Append(&User{ID: b.ID})
 		if asso.Error != nil {
 			return asso.Error
 		}
 
-		asso = tx.Model(&wish).Association("Claimers").Delete(&User{ID: claimer})
+		asso = tx.Model(&wish).Association("Claimers").Delete(&User{ID: b.ID})
 		if asso.Error != nil {
 			return asso.Error
 		}
@@ -289,7 +289,7 @@ func AcceptClaimer(id uint64, claimer string, authedUser string) (*Success, erro
 	}, nil
 }
 
-func RejectClaimer(id uint64, claimer string, authedUser string) (*Success, error) {
+func RejectClaimer(id uint64, b *bindings.Claimer, authedUser string) (*Success, error) {
 	var wish Wish
 
 	db := lib.DB.Select("id, user_id").First(&wish, id)
@@ -307,7 +307,7 @@ func RejectClaimer(id uint64, claimer string, authedUser string) (*Success, erro
 		}
 	}
 
-	count := lib.DB.Model(&wish).Where("user_id = ?", claimer).Association("Claimers").Count()
+	count := lib.DB.Model(&wish).Where("user_id = ?", b.ID).Association("Claimers").Count()
 	if count != 1 {
 		return nil, &RequestError{
 			Status: http.StatusNotFound,
@@ -316,12 +316,12 @@ func RejectClaimer(id uint64, claimer string, authedUser string) (*Success, erro
 	}
 
 	err := lib.DB.Transaction(func(tx *gorm.DB) error {
-		asso := tx.Model(&wish).Association("WantToFulfill").Append(&User{ID: claimer})
+		asso := tx.Model(&wish).Association("WantToFulfill").Append(&User{ID: b.ID})
 		if asso.Error != nil {
 			return asso.Error
 		}
 
-		asso = tx.Model(&wish).Association("Claimers").Delete(&User{ID: claimer})
+		asso = tx.Model(&wish).Association("Claimers").Delete(&User{ID: b.ID})
 		if asso.Error != nil {
 			return asso.Error
 		}

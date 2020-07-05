@@ -59,4 +59,12 @@ func init() {
 	wishes.GET("/:id", routes.ReadWish)
 	wishes.PUT("/:id", models.Authenticate(), routes.UpdateWish)
 	wishes.DELETE("/:id", models.Authenticate(), routes.DeleteWish)
+	wishes.PUT("/:id/add_fulfiller", models.Authenticate(), models.RequireEmailVerification(), routes.AddWantToFulfill)
+	wishes.PUT("/:id/add_claimer", models.Authenticate(), routes.AddClaimer)
+	wishes.PUT("/:id/accept_claimer", models.Authenticate(), routes.AddWantToFulfill)
+	wishes.PUT("/:id/reject_claimer", models.Authenticate(), routes.RejectClaimer)
+	wishes.PUT("/:id/accept_claimer", models.Authenticate(), routes.AddWantToFulfill)
+	wishes.GET("/:id/read_fulfillers", models.Authenticate(), routes.ReadFulfillers)
+	wishes.GET("/:id/read_claimers", models.Authenticate(), routes.ReadClaimers)
+	wishes.GET("/:id/count_fulfillers", routes.CountWantToFulfill)
 }

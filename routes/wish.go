@@ -106,3 +106,197 @@ func DeleteWish(c *gin.Context) {
 
 	c.Status(view.Status)
 }
+
+func AddWantToFulfill(c *gin.Context) {
+	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": ErrRequestIsInvalid.Error(),
+		})
+	}
+
+	authedUser := authedUser(c)
+	if authedUser == "" {
+		return
+	}
+
+	view, err := models.AddWantToFulfill(id, authedUser)
+	if err != nil {
+		err := err.(*models.RequestError)
+		c.JSON(err.Status, gin.H{
+			"error": err.Error(),
+		})
+
+		return
+	}
+
+	c.JSON(view.Status, view.View)
+}
+
+func AddClaimer(c *gin.Context) {
+	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": ErrRequestIsInvalid.Error(),
+		})
+	}
+
+	authedUser := authedUser(c)
+	if authedUser == "" {
+		return
+	}
+
+	view, err := models.AddClaimer(id, authedUser)
+	if err != nil {
+		err := err.(*models.RequestError)
+		c.JSON(err.Status, gin.H{
+			"error": err.Error(),
+		})
+
+		return
+	}
+
+	c.JSON(view.Status, view.View)
+}
+
+func AcceptClaimer(c *gin.Context) {
+	var b bindings.Claimer
+
+	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": ErrRequestIsInvalid.Error(),
+		})
+	}
+
+	authedUser := authedUser(c)
+	if authedUser == "" {
+		return
+	}
+
+	if ok := bindJSON(c, &b); !ok {
+		return
+	}
+
+	view, err := models.AcceptClaimer(id, &b, authedUser)
+	if err != nil {
+		err := err.(*models.RequestError)
+		c.JSON(err.Status, gin.H{
+			"error": err.Error(),
+		})
+
+		return
+	}
+
+	c.JSON(view.Status, view.View)
+}
+
+func RejectClaimer(c *gin.Context) {
+	var b bindings.Claimer
+
+	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": ErrRequestIsInvalid.Error(),
+		})
+	}
+
+	authedUser := authedUser(c)
+	if authedUser == "" {
+		return
+	}
+
+	if ok := bindJSON(c, &b); !ok {
+		return
+	}
+
+	view, err := models.RejectClaimer(id, &b, authedUser)
+	if err != nil {
+		err := err.(*models.RequestError)
+		c.JSON(err.Status, gin.H{
+			"error": err.Error(),
+		})
+
+		return
+	}
+
+	c.JSON(view.Status, view.View)
+}
+
+func ReadClaimers(c *gin.Context) {
+	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": ErrRequestIsInvalid.Error(),
+		})
+	}
+
+	authedUser := authedUser(c)
+	if authedUser == "" {
+		return
+	}
+
+	view, err := models.ReadClaimers(id, authedUser)
+	if err != nil {
+		err := err.(*models.RequestError)
+		c.JSON(err.Status, gin.H{
+			"error": err.Error(),
+		})
+
+		return
+	}
+
+	c.JSON(view.Status, view.View)
+}
+
+func ReadFulfillers(c *gin.Context) {
+	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": ErrRequestIsInvalid.Error(),
+		})
+	}
+
+	authedUser := authedUser(c)
+	if authedUser == "" {
+		return
+	}
+
+	view, err := models.ReadFulfillers(id, authedUser)
+	if err != nil {
+		err := err.(*models.RequestError)
+		c.JSON(err.Status, gin.H{
+			"error": err.Error(),
+		})
+
+		return
+	}
+
+	c.JSON(view.Status, view.View)
+}
+
+func CountWantToFulfill(c *gin.Context) {
+	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": ErrRequestIsInvalid.Error(),
+		})
+	}
+
+	authedUser := authedUser(c)
+	if authedUser == "" {
+		return
+	}
+
+	view, err := models.CountWantToFulfill(id)
+	if err != nil {
+		err := err.(*models.RequestError)
+		c.JSON(err.Status, gin.H{
+			"error": err.Error(),
+		})
+
+		return
+	}
+
+	c.JSON(view.Status, view.View)
+}
