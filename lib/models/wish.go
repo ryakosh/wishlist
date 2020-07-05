@@ -155,7 +155,7 @@ func DeleteWish(id uint64, authedUser string) (*Success, error) {
 	}, nil
 }
 
-func AddWantToFulfill(id uint64, authedUser string) (*Success, error) {
+func AddWantToFulfill(id uint64, authedUser string) (*Success, error) { // TODO: User should not be able to add itself to WantToFulfill when it is already a claimer or fulfiller
 	var wish Wish
 
 	db := lib.DB.Select("id, user_id").First(&wish, id)
@@ -196,6 +196,44 @@ func AddWantToFulfill(id uint64, authedUser string) (*Success, error) {
 		Status: http.StatusOK,
 		View: &views.WishID{
 			ID: wish.ID,
+		},
+	}, nil
+}
+
+func AddClaimer(id uint64, authedUser string) (*Success, error) {
+	asso := lib.DB.Model(&Wish{ID: id}).Where("user_id = ?", authedUser).Association("WantToFulfill")
+	if asso.Error != nil && !gorm.IsRecordNotFoundError(asso.Error) {
+		lib.LogError(lib.LPanic, "Could not read wish's WantToFulfill", asso.Error)
+	}
+
+	if asso.Count() != 1 {
+		return nil, &RequestError{
+			Status: http.StatusNotFound,
+			Err:    ErrUserNotFound,
+		}
+	}
+
+	err := lib.DB.Transaction(func(tx *gorm.DB) error {
+		asso := tx.Model(&Wish{ID: id}).Association("Claimers").Append(&User{ID: authedUser})
+		if asso.Error != nil {
+			return asso.Error
+		}
+
+		asso = tx.Model(&Wish{ID: id}).Association("WantToFulfill").Delete(&User{ID: authedUser})
+		if asso.Error != nil {
+			return asso.Error
+		}
+
+		return nil
+	})
+	if err != nil {
+		lib.LogError(lib.LPanic, "Could not add to Claimers", err)
+	}
+
+	return &Success{
+		Status: http.StatusOK,
+		View: &views.WishID{
+			ID: id,
 		},
 	}, nil
 }
