@@ -340,6 +340,86 @@ func RejectClaimer(id uint64, claimer string, authedUser string) (*Success, erro
 	}, nil
 }
 
+func ReadClaimers(id uint64, authedUser string) (*Success, error) {
+	var wish Wish
+	var claimers []User
+	var vs []*views.RUser
+
+	db := lib.DB.Select("id, user_id").First(&wish, id)
+	if db.Error != nil && !gorm.IsRecordNotFoundError(db.Error) {
+		lib.LogError(lib.LPanic, "Could not read wish", db.Error)
+	} else if db.RecordNotFound() {
+		return nil, &RequestError{
+			Status: http.StatusNotFound,
+			Err:    ErrWishNotFound,
+		}
+	}
+
+	if authedUser != wish.UserID {
+		return nil, &RequestError{
+			Status: http.StatusUnauthorized,
+			Err:    ErrUserNotAuthorized,
+		}
+	}
+
+	lib.DB.Model(&Wish{ID: id}).Association("Claimers").Find(&claimers)
+
+	for _, c := range claimers {
+		vs = append(vs, &views.RUser{
+			ID:        c.ID,
+			FirstName: c.FirstName,
+			LastName:  c.LastName,
+		})
+	}
+
+	return &Success{
+		Status: http.StatusOK,
+		View: &views.ReadFriends{
+			Friends: vs,
+		},
+	}, nil
+}
+
+func ReadFulfillers(id uint64, authedUser string) (*Success, error) {
+	var wish Wish
+	var fulfillers []User
+	var vs []*views.RUser
+
+	db := lib.DB.Select("id, user_id").First(&wish, id)
+	if db.Error != nil && !gorm.IsRecordNotFoundError(db.Error) {
+		lib.LogError(lib.LPanic, "Could not read wish", db.Error)
+	} else if db.RecordNotFound() {
+		return nil, &RequestError{
+			Status: http.StatusNotFound,
+			Err:    ErrWishNotFound,
+		}
+	}
+
+	if authedUser != wish.UserID {
+		return nil, &RequestError{
+			Status: http.StatusUnauthorized,
+			Err:    ErrUserNotAuthorized,
+		}
+	}
+
+	lib.DB.Model(&Wish{ID: id}).Association("Fulfillers").Find(&fulfillers)
+
+	for _, c := range fulfillers {
+		vs = append(vs, &views.RUser{
+			ID:        c.ID,
+			FirstName: c.FirstName,
+			LastName:  c.LastName,
+		})
+	}
+
+	return &Success{
+		Status: http.StatusOK,
+		View: &views.ReadFriends{
+			Friends: vs,
+		},
+	}, nil
+}
+
 func init() {
 	lib.DB.AutoMigrate(&Wish{})
 }
