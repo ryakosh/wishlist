@@ -420,6 +420,29 @@ func ReadFulfillers(id uint64, authedUser string) (*Success, error) {
 	}, nil
 }
 
+func CountWantToFulfill(id uint64) (*Success, error) {
+	var wish Wish
+
+	db := lib.DB.Select("id").First(&wish, id)
+	if db.Error != nil && !gorm.IsRecordNotFoundError(db.Error) {
+		lib.LogError(lib.LPanic, "Could not read wish", db.Error)
+	} else if db.RecordNotFound() {
+		return nil, &RequestError{
+			Status: http.StatusNotFound,
+			Err:    ErrWishNotFound,
+		}
+	}
+
+	count := lib.DB.Model(&wish).Association("WantToFulfill").Count()
+
+	return &Success{
+		Status: http.StatusOK,
+		View: &views.WishCount{
+			Count: count,
+		},
+	}, nil
+}
+
 func init() {
 	lib.DB.AutoMigrate(&Wish{})
 }

@@ -31,3 +31,7 @@ type UWish struct {
 type WishID struct {
 	ID uint64 `json:"id"`
 }
+
+type WishCount struct {
+	Count int `json:"count"`
+}
