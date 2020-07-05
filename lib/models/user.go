@@ -530,6 +530,15 @@ func ReadFriendRequests(page uint64, authedUser string) (*Success, error) {
 	}, nil
 }
 
+func AreFriends(user, authedUser string) bool {
+	count := lib.DB.Model(&User{ID: authedUser}).Where("friend_id = ?", user).Association("Friends").Count()
+	if count != 1 {
+		return false
+	}
+
+	return true
+}
+
 // Authenticate is a middleware that is used to authenticate users
 // on certain endpoints using Authorization header, it's not enforcing authentication
 // on endpoints that it's beeing used so endpoints should decide whether
