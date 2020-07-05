@@ -168,7 +168,7 @@ func AddWantToFulfill(id uint64, authedUser string) (*Success, error) { // TODO:
 		}
 	}
 
-	if authedUser == wish.UserID {
+	if authedUser == wish.UserID || !AreFriends(wish.UserID, authedUser) {
 		return nil, &RequestError{
 			Status: http.StatusUnauthorized,
 			Err:    ErrUserNotAuthorized,
