@@ -27,3 +27,7 @@ type UWish struct {
 	Link        string `json:"link"`
 	Image       string `json:"image"`
 }
+
+type WishID struct {
+	ID uint64 `json:"id"`
+}

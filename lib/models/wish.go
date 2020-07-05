@@ -16,15 +16,17 @@ var ErrWishNotFound = errors.New("Wish not found")
 
 // Wish represents a user's wish to buy something, do something etc.
 type Wish struct {
-	ID          uint64
-	UserID      string
-	Name        string `gorm:"type:varchar(256)"`
-	Description string `gorm:"type:varchar(1024)"`
-	Link        string
-	Image       string
-	FulfilledBy string
-	CreatedAt   *time.Time
-	UpdatedAt   *time.Time
+	ID            uint64
+	UserID        string
+	Name          string `gorm:"type:varchar(256)"`
+	Description   string `gorm:"type:varchar(1024)"`
+	Link          string
+	Image         string
+	WantToFulfill []*User `many2many:"want_to_fulfill"`
+	Claimers      []*User `many2many:"claimers"`
+	Fulfillers    []*User `many2many:"fulfillers"`
+	CreatedAt     *time.Time
+	UpdatedAt     *time.Time
 }
 
 // CreateWish is used to add a wish to the database
@@ -150,6 +152,51 @@ func DeleteWish(id uint64, authedUser string) (*Success, error) {
 
 	return &Success{
 		Status: http.StatusOK,
+	}, nil
+}
+
+func AddWantToFulfill(id uint64, authedUser string) (*Success, error) {
+	var wish Wish
+
+	db := lib.DB.Select("id, user_id").First(&wish, id)
+	if db.Error != nil && !gorm.IsRecordNotFoundError(db.Error) {
+		lib.LogError(lib.LPanic, "Could not read wish", db.Error)
+	} else if db.RecordNotFound() {
+		return nil, &RequestError{
+			Status: http.StatusNotFound,
+			Err:    ErrWishNotFound,
+		}
+	}
+
+	if authedUser == wish.UserID {
+		return nil, &RequestError{
+			Status: http.StatusUnauthorized,
+			Err:    ErrUserNotAuthorized,
+		}
+	}
+
+	asso := lib.DB.Model(&Wish{ID: id}).Where("user_id = ?", authedUser).Association("WantToFulfill")
+	if asso.Error != nil && !gorm.IsRecordNotFoundError(asso.Error) {
+		lib.LogError(lib.LPanic, "Could not read wish's WantToFulfill", asso.Error)
+	}
+
+	if asso.Count() != 0 {
+		return nil, &RequestError{
+			Status: http.StatusConflict,
+			Err:    ErrUserExists,
+		}
+	}
+
+	err := lib.DB.Model(&Wish{ID: id}).Association("WantToFulfill").Append(&User{ID: authedUser}).Error
+	if err != nil {
+		lib.LogError(lib.LPanic, "Could not add to WantToFulfill", err)
+	}
+
+	return &Success{
+		Status: http.StatusOK,
+		View: &views.WishID{
+			ID: wish.ID,
+		},
 	}, nil
 }
 
