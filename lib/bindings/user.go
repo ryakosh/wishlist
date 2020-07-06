@@ -27,6 +27,10 @@ type VerifyUserEmail struct {
 	Code string `json:"code" binding:"required,max=14"`
 }
 
+type ReadUsers struct {
+	Page uint64 `json:"page" binding:"min=1"`
+}
+
 // Requestee is used to request friendship from Requestee and
 // to accept friendship from Requestee
 type Requestee struct {

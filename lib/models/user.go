@@ -92,8 +92,10 @@ func (u *User) AfterDelete(tx *gorm.DB) error {
 }
 
 // CreateUser is used to register/add a user to the database
-func CreateUser(b *bindings.CUser) (*Success, error) {
+func CreateUser(o *Options) (*Success, error) {
 	var user User
+
+	b := o.B.(*bindings.CUser)
 
 	db := lib.DB.Where("id = ?", b.ID).Or("email = ?", b.Email).First(&user)
 	if db.Error != nil && !gorm.IsRecordNotFoundError(db.Error) {
@@ -162,8 +164,10 @@ func CreateUser(b *bindings.CUser) (*Success, error) {
 }
 
 // ReadUser is used to get general information about a user in the database
-func ReadUser(id string) (*Success, error) {
+func ReadUser(o *Options) (*Success, error) {
 	var user User
+
+	id := o.Params["id"].(string)
 
 	db := lib.DB.Select("id, first_name, last_name").Where("id = ?", id).First(&user)
 	if db.Error != nil && !gorm.IsRecordNotFoundError(db.Error) {
@@ -186,8 +190,10 @@ func ReadUser(id string) (*Success, error) {
 }
 
 // UpdateUser is used to update user's general information
-func UpdateUser(b *bindings.UUser, authedUser string) (*Success, error) {
-	db := lib.DB.Model(&User{ID: authedUser}).Updates(&User{
+func UpdateUser(o *Options) (*Success, error) {
+	b := o.B.(*bindings.UUser)
+
+	db := lib.DB.Model(&User{ID: o.AuthedUser}).Updates(&User{
 		FirstName: b.FirstName,
 		LastName:  b.LastName,
 	})
@@ -205,8 +211,8 @@ func UpdateUser(b *bindings.UUser, authedUser string) (*Success, error) {
 }
 
 // DeleteUser is used to delete a user from the database
-func DeleteUser(authedUser string) (*Success, error) {
-	db := lib.DB.Delete(&User{ID: authedUser})
+func DeleteUser(o *Options) (*Success, error) {
+	db := lib.DB.Delete(&User{ID: o.AuthedUser})
 	if db.Error != nil {
 		lib.LogError(lib.LPanic, "Could not delete user", db.Error)
 	}
@@ -217,8 +223,10 @@ func DeleteUser(authedUser string) (*Success, error) {
 }
 
 // LoginUser is used for user authentication
-func LoginUser(b *bindings.LoginUser) (*Success, error) {
+func LoginUser(o *Options) (*Success, error) {
 	var user User
+
+	b := o.B.(*bindings.LoginUser)
 
 	db := lib.DB.Select("id, email, password").Where("id = ?", b.ID).First(&user)
 	if db.Error != nil && !gorm.IsRecordNotFoundError(db.Error) {
@@ -256,10 +264,12 @@ func verifyPassword(password string, hash string) bool {
 
 // VerifyUserEmail is used to verify user's email address using
 // the generated safe random code
-func VerifyUserEmail(b *bindings.VerifyUserEmail, authedUser string) (*Success, error) {
+func VerifyUserEmail(o *Options) (*Success, error) {
 	var user User
 
-	db := lib.DB.Select("is_email_verified").Where("id = ?", authedUser).First(&user)
+	b := o.B.(*bindings.VerifyUserEmail)
+
+	db := lib.DB.Select("is_email_verified").Where("id = ?", o.AuthedUser).First(&user)
 	if db.Error != nil && !gorm.IsRecordNotFoundError(db.Error) {
 		lib.LogError(lib.LPanic, "Could not read user", db.Error)
 	} else if db.RecordNotFound() {
@@ -276,13 +286,13 @@ func VerifyUserEmail(b *bindings.VerifyUserEmail, authedUser string) (*Success, 
 		}
 	}
 
-	isMatch, err := VerifyCode(authedUser, b.Code)
+	isMatch, err := VerifyCode(o.AuthedUser, b.Code)
 	if err != nil {
 		return nil, err
 	}
 
 	if isMatch.View.(bool) {
-		db := lib.DB.Model(&User{ID: authedUser}).Update("is_email_verified", true)
+		db := lib.DB.Model(&User{ID: o.AuthedUser}).Update("is_email_verified", true)
 		if db.Error != nil {
 			lib.LogError(lib.LPanic, "Could not update user", db.Error)
 		}
@@ -295,12 +305,14 @@ func VerifyUserEmail(b *bindings.VerifyUserEmail, authedUser string) (*Success, 
 
 // ReqFriendship is used to request friendship from another user in the
 // database
-func ReqFriendship(b *bindings.Requestee, authedUser string) (*Success, error) {
+func ReqFriendship(o *Options) (*Success, error) {
 	var requestee User
 	var friendsCount uint8
 	var friendRequestsCount uint8
 
-	if authedUser == b.Requestee {
+	b := o.B.(*bindings.Requestee)
+
+	if o.AuthedUser == b.Requestee {
 		return nil, &RequestError{
 			Status: http.StatusNotFound,
 			Err:    ErrUserNotFound,
@@ -317,12 +329,12 @@ func ReqFriendship(b *bindings.Requestee, authedUser string) (*Success, error) {
 		}
 	}
 
-	db = lib.DB.Table("friendrequests").Where("user_id = ? AND requester_id = ?", requestee.ID, authedUser).Count(&friendRequestsCount)
+	db = lib.DB.Table("friendrequests").Where("user_id = ? AND requester_id = ?", requestee.ID, o.AuthedUser).Count(&friendRequestsCount)
 	if db.Error != nil && !gorm.IsRecordNotFoundError(db.Error) {
 		lib.LogError(lib.LPanic, "Could not read user", db.Error)
 	}
 
-	db = lib.DB.Table("friendships").Where("user_id = ? AND friend_id = ?", authedUser, requestee.ID).Count(&friendsCount)
+	db = lib.DB.Table("friendships").Where("user_id = ? AND friend_id = ?", o.AuthedUser, requestee.ID).Count(&friendsCount)
 	if db.Error != nil && !gorm.IsRecordNotFoundError(db.Error) {
 		lib.LogError(lib.LPanic, "Could not read user", db.Error)
 	}
@@ -334,7 +346,7 @@ func ReqFriendship(b *bindings.Requestee, authedUser string) (*Success, error) {
 		}
 	}
 
-	err := lib.DB.Model(&User{ID: requestee.ID}).Association("FriendRequests").Append(&User{ID: authedUser}).Error
+	err := lib.DB.Model(&User{ID: requestee.ID}).Association("FriendRequests").Append(&User{ID: o.AuthedUser}).Error
 	if err != nil {
 		lib.LogError(lib.LPanic, "Could not request friendship", err)
 	}
@@ -348,8 +360,10 @@ func ReqFriendship(b *bindings.Requestee, authedUser string) (*Success, error) {
 }
 
 // UnReqFriendship is used to delete user's friendship request
-func UnReqFriendship(b *bindings.Requestee, authedUser string) (*Success, error) {
-	c := lib.DB.Model(&User{ID: b.Requestee}).Where("requester_id = ?", authedUser).Association("FriendRequests").Count()
+func UnReqFriendship(o *Options) (*Success, error) {
+	b := o.B.(*bindings.Requestee)
+
+	c := lib.DB.Model(&User{ID: b.Requestee}).Where("requester_id = ?", o.AuthedUser).Association("FriendRequests").Count()
 	if c != 1 {
 		return nil, &RequestError{
 			Status: http.StatusNotFound,
@@ -357,7 +371,7 @@ func UnReqFriendship(b *bindings.Requestee, authedUser string) (*Success, error)
 		}
 	}
 
-	err := lib.DB.Model(&User{ID: b.Requestee}).Association("FriendRequests").Delete(&User{ID: authedUser}).Error
+	err := lib.DB.Model(&User{ID: b.Requestee}).Association("FriendRequests").Delete(&User{ID: o.AuthedUser}).Error
 	if err != nil {
 		lib.LogError(lib.LPanic, "Could not delete friendship request", err)
 	}
@@ -372,10 +386,12 @@ func UnReqFriendship(b *bindings.Requestee, authedUser string) (*Success, error)
 
 // AccFriendship is used to accept a friendship request from another user
 // that has been previously requested for friendship
-func AccFriendship(b *bindings.Requestee, authedUser string) (*Success, error) {
+func AccFriendship(o *Options) (*Success, error) {
 	var requestees []User
 
-	db := lib.DB.Model(&User{ID: authedUser}).Select("id").Where(
+	b := o.B.(*bindings.Requestee)
+
+	db := lib.DB.Model(&User{ID: o.AuthedUser}).Select("id").Where(
 		"requester_id = ?", b.Requestee).Related(&requestees, "FriendRequests")
 	if db.Error != nil && !gorm.IsRecordNotFoundError(db.Error) {
 		lib.LogError(lib.LPanic, "Could not read user's friend requests", db.Error)
@@ -389,17 +405,17 @@ func AccFriendship(b *bindings.Requestee, authedUser string) (*Success, error) {
 	}
 
 	err := lib.DB.Transaction(func(tx *gorm.DB) error {
-		err := tx.Model(&User{ID: authedUser}).Association("Friends").Append(requestees[0]).Error
+		err := tx.Model(&User{ID: o.AuthedUser}).Association("Friends").Append(requestees[0]).Error
 		if err != nil {
 			return err
 		}
 
-		err = tx.Model(&User{ID: requestees[0].ID}).Association("Friends").Append(&User{ID: authedUser}).Error
+		err = tx.Model(&User{ID: requestees[0].ID}).Association("Friends").Append(&User{ID: o.AuthedUser}).Error
 		if err != nil {
 			return err
 		}
 
-		err = tx.Model(&User{ID: authedUser}).Association("FriendRequests").Delete(requestees[0]).Error
+		err = tx.Model(&User{ID: o.AuthedUser}).Association("FriendRequests").Delete(requestees[0]).Error
 		if err != nil {
 			return err
 		}
@@ -421,10 +437,12 @@ func AccFriendship(b *bindings.Requestee, authedUser string) (*Success, error) {
 
 // RejFriendship is used to reject a friendship request from another user
 // that has been previously requested for friendship
-func RejFriendship(b *bindings.Requestee, authedUser string) (*Success, error) {
+func RejFriendship(o *Options) (*Success, error) {
 	var requestees []User
 
-	db := lib.DB.Model(&User{ID: authedUser}).Select("id").Where(
+	b := o.B.(*bindings.Requestee)
+
+	db := lib.DB.Model(&User{ID: o.AuthedUser}).Select("id").Where(
 		"requester_id = ?", b.Requestee).Related(&requestees, "FriendRequests")
 	if db.Error != nil && !gorm.IsRecordNotFoundError(db.Error) {
 		lib.LogError(lib.LPanic, "Could not read user's friend requests", db.Error)
@@ -437,7 +455,7 @@ func RejFriendship(b *bindings.Requestee, authedUser string) (*Success, error) {
 		}
 	}
 
-	err := lib.DB.Model(&User{ID: authedUser}).Association("FriendRequests").Delete(requestees[0]).Error
+	err := lib.DB.Model(&User{ID: o.AuthedUser}).Association("FriendRequests").Delete(requestees[0]).Error
 	if err != nil {
 		lib.LogError(lib.LPanic, "Could not reject friendship", err)
 	}
@@ -475,13 +493,15 @@ func CountFriends(authedUser string) (*Success, error) {
 }
 
 // ReadFriends is used to get user's friends
-func ReadFriends(page uint64, authedUser string) (*Success, error) {
+func ReadFriends(o *Options) (*Success, error) {
 	var friends []User
 	var vs []*views.RUser
 
-	db := lib.DB.Model(&User{ID: authedUser}).Select(
+	b := o.B.(*bindings.ReadUsers)
+
+	db := lib.DB.Model(&User{ID: o.AuthedUser}).Select(
 		"id, first_name, last_name").Offset(
-		(page * 10) - 10).Limit(10).Association("Friends").Find(&friends)
+		(b.Page * 10) - 10).Limit(10).Association("Friends").Find(&friends)
 	if db.Error != nil && !gorm.IsRecordNotFoundError(db.Error) {
 		lib.LogError(lib.LPanic, "Could not read user's friends", db.Error)
 	}
@@ -496,20 +516,22 @@ func ReadFriends(page uint64, authedUser string) (*Success, error) {
 
 	return &Success{
 		Status: http.StatusOK,
-		View: &views.ReadFriends{
-			Friends: vs,
+		View: &views.ReadUsers{
+			Users: vs,
 		},
 	}, nil
 }
 
 // ReadFriendRequests is used to get user's friend requests
-func ReadFriendRequests(page uint64, authedUser string) (*Success, error) {
+func ReadFriendRequests(o *Options) (*Success, error) {
 	var reqs []User
 	var vs []*views.RUser
 
-	db := lib.DB.Model(&User{ID: authedUser}).Select(
+	b := o.B.(*bindings.ReadUsers)
+
+	db := lib.DB.Model(&User{ID: o.AuthedUser}).Select(
 		"id, first_name, last_name").Offset(
-		(page * 10) - 10).Limit(10).Association("FriendRequests").Find(&reqs)
+		(b.Page * 10) - 10).Limit(10).Association("FriendRequests").Find(&reqs)
 	if db.Error != nil && !gorm.IsRecordNotFoundError(db.Error) {
 		lib.LogError(lib.LPanic, "Could not read user's friend requests", db.Error)
 	}
@@ -524,8 +546,8 @@ func ReadFriendRequests(page uint64, authedUser string) (*Success, error) {
 
 	return &Success{
 		Status: http.StatusOK,
-		View: &views.ReadFriendRequests{
-			Requesters: vs,
+		View: &views.ReadUsers{
+			Users: vs,
 		},
 	}, nil
 }

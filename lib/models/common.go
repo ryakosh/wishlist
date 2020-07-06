@@ -7,6 +7,18 @@ import (
 
 var ErrInternalServer = errors.New(http.StatusText(http.StatusInternalServerError))
 
+// Success is used to indicate that the request was successful
+type Success struct {
+	Status int
+	View   interface{}
+}
+
+type Options struct {
+	B          interface{}
+	Params     map[string]interface{}
+	AuthedUser string
+}
+
 // RequestError is an error wrapper type that wraps request's error as
 // well as it's http status code
 type RequestError struct {

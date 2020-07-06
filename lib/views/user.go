@@ -27,14 +27,9 @@ type Requestee struct {
 	Requestee string `json:"requestee"`
 }
 
-// ReadFriends is used to respond clients with user's firends
-type ReadFriends struct {
-	Friends []*RUser `json:"friends"`
-}
-
-// ReadFriendRequests is used to respond clients with user's firend requests
-type ReadFriendRequests struct {
-	Requesters []*RUser `json:"requesters"`
+// ReadUsers is used to respond clients with a list of users
+type ReadUsers struct {
+	Users []*RUser `json:"users"`
 }
 
 // CountFriends is used to respond clients with user's friends count

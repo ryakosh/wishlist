@@ -22,17 +22,19 @@ type Wish struct {
 	Description   string `gorm:"type:varchar(1024)"`
 	Link          string
 	Image         string
-	WantToFulfill []*User `many2many:"want_to_fulfill"`
-	Claimers      []*User `many2many:"claimers"`
-	Fulfillers    []*User `many2many:"fulfillers"`
+	WantToFulfill []User `many2many:"want_to_fulfill"`
+	Claimers      []User `many2many:"claimers"`
+	Fulfillers    []User `many2many:"fulfillers"`
 	CreatedAt     *time.Time
 	UpdatedAt     *time.Time
 }
 
 // CreateWish is used to add a wish to the database
-func CreateWish(b *bindings.CWish, authedUser string) (*Success, error) {
+func CreateWish(o *Options) (*Success, error) {
+	b := o.B.(*bindings.CWish)
+
 	wish := Wish{
-		UserID:      authedUser,
+		UserID:      o.AuthedUser,
 		Name:        b.Name,
 		Description: b.Description,
 		Link:        b.Link,
@@ -57,8 +59,10 @@ func CreateWish(b *bindings.CWish, authedUser string) (*Success, error) {
 }
 
 // ReadWish is used to get general information about a wish in the database
-func ReadWish(id uint64) (*Success, error) {
+func ReadWish(o *Options) (*Success, error) {
 	var wish Wish
+
+	id := o.Params["id"].(uint64)
 
 	db := lib.DB.Omit("fulfilled_by, created_at, updated_at").First(&wish, id)
 	if db.Error != nil && !gorm.IsRecordNotFoundError(db.Error) {
@@ -83,8 +87,11 @@ func ReadWish(id uint64) (*Success, error) {
 }
 
 // UpdateWish is used to update wish's general information in the database
-func UpdateWish(id uint64, b *bindings.UWish, authedUser string) (*Success, error) {
+func UpdateWish(o *Options) (*Success, error) {
 	var wish Wish
+
+	id := o.Params["id"].(uint64)
+	b := o.B.(*bindings.UWish)
 
 	db := lib.DB.Select("id, user_id").First(&wish, id)
 	if db.Error != nil && !gorm.IsRecordNotFoundError(db.Error) {
@@ -96,7 +103,7 @@ func UpdateWish(id uint64, b *bindings.UWish, authedUser string) (*Success, erro
 		}
 	}
 
-	if wish.UserID != authedUser {
+	if wish.UserID != o.AuthedUser {
 		return nil, &RequestError{
 			Status: http.StatusUnauthorized,
 			Err:    ErrUserNotAuthorized,
@@ -126,8 +133,10 @@ func UpdateWish(id uint64, b *bindings.UWish, authedUser string) (*Success, erro
 }
 
 // DeleteWish is used to delete a wish from the database
-func DeleteWish(id uint64, authedUser string) (*Success, error) {
+func DeleteWish(o *Options) (*Success, error) {
 	var wish Wish
+
+	id := o.Params["id"].(uint64)
 
 	db := lib.DB.Select("id, user_id").First(&wish, id)
 	if db.Error != nil && !gorm.IsRecordNotFoundError(db.Error) {
@@ -138,7 +147,7 @@ func DeleteWish(id uint64, authedUser string) (*Success, error) {
 			Err:    ErrWishNotFound,
 		}
 	}
-	if wish.UserID != authedUser {
+	if wish.UserID != o.AuthedUser {
 		return nil, &RequestError{
 			Status: http.StatusUnauthorized,
 			Err:    ErrUserNotAuthorized,
@@ -155,8 +164,10 @@ func DeleteWish(id uint64, authedUser string) (*Success, error) {
 	}, nil
 }
 
-func AddWantToFulfill(id uint64, authedUser string) (*Success, error) { // TODO: User should not be able to add itself to WantToFulfill when it is already a claimer or fulfiller
+func AddWantToFulfill(o *Options) (*Success, error) { // TODO: User should not be able to add itself to WantToFulfill when it is already a claimer or fulfiller
 	var wish Wish
+
+	id := o.Params["id"].(uint64)
 
 	db := lib.DB.Select("id, user_id").First(&wish, id)
 	if db.Error != nil && !gorm.IsRecordNotFoundError(db.Error) {
@@ -168,17 +179,14 @@ func AddWantToFulfill(id uint64, authedUser string) (*Success, error) { // TODO:
 		}
 	}
 
-	if authedUser == wish.UserID || !AreFriends(wish.UserID, authedUser) {
+	if o.AuthedUser == wish.UserID || !AreFriends(wish.UserID, o.AuthedUser) {
 		return nil, &RequestError{
 			Status: http.StatusUnauthorized,
 			Err:    ErrUserNotAuthorized,
 		}
 	}
 
-	asso := lib.DB.Model(&Wish{ID: id}).Where("user_id = ?", authedUser).Association("WantToFulfill")
-	if asso.Error != nil && !gorm.IsRecordNotFoundError(asso.Error) {
-		lib.LogError(lib.LPanic, "Could not read wish's WantToFulfill", asso.Error)
-	}
+	asso := lib.DB.Model(&Wish{ID: id}).Where("user_id = ?", o.AuthedUser).Association("WantToFulfill")
 
 	if asso.Count() != 0 {
 		return nil, &RequestError{
@@ -187,7 +195,7 @@ func AddWantToFulfill(id uint64, authedUser string) (*Success, error) { // TODO:
 		}
 	}
 
-	err := lib.DB.Model(&Wish{ID: id}).Association("WantToFulfill").Append(&User{ID: authedUser}).Error
+	err := lib.DB.Model(&Wish{ID: id}).Association("WantToFulfill").Append(&User{ID: o.AuthedUser}).Error
 	if err != nil {
 		lib.LogError(lib.LPanic, "Could not add to WantToFulfill", err)
 	}
@@ -200,8 +208,10 @@ func AddWantToFulfill(id uint64, authedUser string) (*Success, error) { // TODO:
 	}, nil
 }
 
-func AddClaimer(id uint64, authedUser string) (*Success, error) {
-	asso := lib.DB.Model(&Wish{ID: id}).Where("user_id = ?", authedUser).Association("WantToFulfill")
+func AddClaimer(o *Options) (*Success, error) {
+	id := o.Params["id"].(uint64)
+
+	asso := lib.DB.Model(&Wish{ID: id}).Where("user_id = ?", o.AuthedUser).Association("WantToFulfill")
 	if asso.Error != nil && !gorm.IsRecordNotFoundError(asso.Error) {
 		lib.LogError(lib.LPanic, "Could not read wish's WantToFulfill", asso.Error)
 	}
@@ -214,12 +224,12 @@ func AddClaimer(id uint64, authedUser string) (*Success, error) {
 	}
 
 	err := lib.DB.Transaction(func(tx *gorm.DB) error {
-		asso := tx.Model(&Wish{ID: id}).Association("Claimers").Append(&User{ID: authedUser})
+		asso := tx.Model(&Wish{ID: id}).Association("Claimers").Append(&User{ID: o.AuthedUser})
 		if asso.Error != nil {
 			return asso.Error
 		}
 
-		asso = tx.Model(&Wish{ID: id}).Association("WantToFulfill").Delete(&User{ID: authedUser})
+		asso = tx.Model(&Wish{ID: id}).Association("WantToFulfill").Delete(&User{ID: o.AuthedUser})
 		if asso.Error != nil {
 			return asso.Error
 		}
@@ -238,8 +248,11 @@ func AddClaimer(id uint64, authedUser string) (*Success, error) {
 	}, nil
 }
 
-func AcceptClaimer(id uint64, b *bindings.Claimer, authedUser string) (*Success, error) {
+func AcceptClaimer(o *Options) (*Success, error) {
 	var wish Wish
+
+	id := o.Params["id"].(uint64)
+	b := o.B.(*bindings.Claimer)
 
 	db := lib.DB.Select("id, user_id").First(&wish, id)
 	if db.RecordNotFound() {
@@ -249,7 +262,7 @@ func AcceptClaimer(id uint64, b *bindings.Claimer, authedUser string) (*Success,
 		}
 	}
 
-	if authedUser != wish.UserID {
+	if o.AuthedUser != wish.UserID {
 		return nil, &RequestError{
 			Status: http.StatusUnauthorized,
 			Err:    ErrUserNotAuthorized,
@@ -289,8 +302,11 @@ func AcceptClaimer(id uint64, b *bindings.Claimer, authedUser string) (*Success,
 	}, nil
 }
 
-func RejectClaimer(id uint64, b *bindings.Claimer, authedUser string) (*Success, error) {
+func RejectClaimer(o *Options) (*Success, error) {
 	var wish Wish
+
+	id := o.Params["id"].(uint64)
+	b := o.B.(*bindings.Claimer)
 
 	db := lib.DB.Select("id, user_id").First(&wish, id)
 	if db.RecordNotFound() {
@@ -300,7 +316,7 @@ func RejectClaimer(id uint64, b *bindings.Claimer, authedUser string) (*Success,
 		}
 	}
 
-	if authedUser != wish.UserID {
+	if o.AuthedUser != wish.UserID {
 		return nil, &RequestError{
 			Status: http.StatusUnauthorized,
 			Err:    ErrUserNotAuthorized,
@@ -340,10 +356,12 @@ func RejectClaimer(id uint64, b *bindings.Claimer, authedUser string) (*Success,
 	}, nil
 }
 
-func ReadClaimers(id uint64, authedUser string) (*Success, error) {
+func ReadClaimers(o *Options) (*Success, error) {
 	var wish Wish
 	var claimers []User
 	var vs []*views.RUser
+
+	id := o.Params["id"].(uint64)
 
 	db := lib.DB.Select("id, user_id").First(&wish, id)
 	if db.Error != nil && !gorm.IsRecordNotFoundError(db.Error) {
@@ -355,7 +373,7 @@ func ReadClaimers(id uint64, authedUser string) (*Success, error) {
 		}
 	}
 
-	if authedUser != wish.UserID {
+	if o.AuthedUser != wish.UserID {
 		return nil, &RequestError{
 			Status: http.StatusUnauthorized,
 			Err:    ErrUserNotAuthorized,
@@ -374,16 +392,18 @@ func ReadClaimers(id uint64, authedUser string) (*Success, error) {
 
 	return &Success{
 		Status: http.StatusOK,
-		View: &views.ReadFriends{
-			Friends: vs,
+		View: &views.ReadUsers{
+			Users: vs,
 		},
 	}, nil
 }
 
-func ReadFulfillers(id uint64, authedUser string) (*Success, error) {
+func ReadFulfillers(o *Options) (*Success, error) {
 	var wish Wish
 	var fulfillers []User
 	var vs []*views.RUser
+
+	id := o.Params["id"].(uint64)
 
 	db := lib.DB.Select("id, user_id").First(&wish, id)
 	if db.Error != nil && !gorm.IsRecordNotFoundError(db.Error) {
@@ -395,7 +415,7 @@ func ReadFulfillers(id uint64, authedUser string) (*Success, error) {
 		}
 	}
 
-	if authedUser != wish.UserID {
+	if o.AuthedUser != wish.UserID {
 		return nil, &RequestError{
 			Status: http.StatusUnauthorized,
 			Err:    ErrUserNotAuthorized,
@@ -414,14 +434,16 @@ func ReadFulfillers(id uint64, authedUser string) (*Success, error) {
 
 	return &Success{
 		Status: http.StatusOK,
-		View: &views.ReadFriends{
-			Friends: vs,
+		View: &views.ReadUsers{
+			Users: vs,
 		},
 	}, nil
 }
 
-func CountWantToFulfill(id uint64) (*Success, error) {
+func CountWantToFulfill(o *Options) (*Success, error) {
 	var wish Wish
+
+	id := o.Params["id"].(uint64)
 
 	db := lib.DB.Select("id").First(&wish, id)
 	if db.Error != nil && !gorm.IsRecordNotFoundError(db.Error) {
