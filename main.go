@@ -14,6 +14,10 @@ import (
 	"github.com/ryakosh/wishlist/lib/models"
 )
 
+const logsDir = "./logs/"
+
+var accessLog *log.Logger
+
 // ErrRequestIsInvalid is returned when the provided request could not
 // be handled due to validation or parsing errors
 var ErrRequestIsInvalid = errors.New("Request is invalid")
@@ -116,12 +120,16 @@ func authedUser(c *gin.Context) string {
 	return authedUser.(string)
 }
 
-func main() {
-	r.Run(":8080")
-}
+func initLogs() {
+	if _, err := os.Stat(logsDir); os.IsNotExist(err) {
+		if err := os.Mkdir(logsDir, 0700); err != nil {
+			lib.LogError(lib.LFatal, "Could not create logs directory", err)
+		}
+	} else if err != nil {
+		lib.LogError(lib.LFatal, "Could not create logs directory", err)
+	}
 
-func init() {
-	serverLog, err := os.OpenFile("server.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0600)
+	serverLog, err := os.OpenFile(logsDir+"server.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0600)
 	if err != nil {
 		lib.LogError(lib.LFatal, "Could not create log file", err)
 
@@ -129,14 +137,40 @@ func init() {
 	log.SetOutput(serverLog)
 
 	gin.DisableConsoleColor()
-	ginLog, err := os.OpenFile("gin.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0600)
+	ginLog, err := os.OpenFile(logsDir+"gin.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0600)
 	if err != nil {
 		lib.LogError(lib.LFatal, "Could not create log file", err)
 	}
 	gin.DefaultWriter = ginLog
 
+	accessLogFile, err := os.OpenFile(logsDir+"access.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0600)
+	if err != nil {
+		lib.LogError(lib.LFatal, "Could not create log file", err)
+
+	}
+
+	accessLog = log.New(accessLogFile, "", log.LstdFlags)
+}
+
+func accessLogger() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		remoteAddr := c.Request.RemoteAddr
+		method := c.Request.Method
+		path := c.Request.URL.Path
+
+		accessLog.Printf("%s - %s - %s\n", remoteAddr, method, path)
+	}
+}
+
+func main() {
+	r.Run(":8080")
+}
+
+func init() {
+	initLogs()
+
 	r = gin.Default()
-	r.Use(AccessLogger())
+	r.Use(accessLogger())
 
 	r.POST("/login", genHandler(models.LoginUser, new(bindings.LoginUser), nil, false))
 	users := r.Group("/users")
