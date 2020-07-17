@@ -1,4 +1,4 @@
-package models
+package model
 
 import (
 	"errors"
@@ -7,6 +7,7 @@ import (
 
 	"github.com/jinzhu/gorm"
 	"github.com/ryakosh/wishlist/lib"
+	"github.com/ryakosh/wishlist/lib/db"
 )
 
 const (
@@ -45,22 +46,22 @@ func CreateCode(username string) (*Success, error) {
 	var user User
 	var code Code
 
-	db := lib.DB.Select("id").Where("id = ?", username).First(&user)
-	if db.Error != nil && !gorm.IsRecordNotFoundError(db.Error) {
-		lib.LogError(lib.LPanic, "Could not read user", db.Error)
-	} else if db.RecordNotFound() {
+	d := db.DB.Select("id").Where("id = ?", username).First(&user)
+	if d.Error != nil && !gorm.IsRecordNotFoundError(d.Error) {
+		lib.LogError(lib.LPanic, "Could not read user", d.Error)
+	} else if d.RecordNotFound() {
 		return nil, &RequestError{
 			Status: http.StatusNotFound,
 			Err:    ErrUserNotFound,
 		}
 	}
 
-	db = lib.DB.Select("user_id, created_at").Where("user_id = ?", username).First(&code)
-	if db.Error != nil && !gorm.IsRecordNotFoundError(db.Error) {
-		lib.LogError(lib.LPanic, "Could not read code", db.Error)
+	d = db.DB.Select("user_id, created_at").Where("user_id = ?", username).First(&code)
+	if d.Error != nil && !gorm.IsRecordNotFoundError(d.Error) {
+		lib.LogError(lib.LPanic, "Could not read code", d.Error)
 	}
 
-	if !db.RecordNotFound() {
+	if !d.RecordNotFound() {
 		now := time.Now().UTC()
 		deadline := code.CreatedAt.UTC().Add(CodeTTL)
 
@@ -71,9 +72,9 @@ func CreateCode(username string) (*Success, error) {
 			}
 		}
 
-		db := lib.DB.Delete(&code)
-		if db.Error != nil {
-			lib.LogError(lib.LPanic, "Could not delete code", db.Error)
+		d := db.DB.Delete(&code)
+		if d.Error != nil {
+			lib.LogError(lib.LPanic, "Could not delete code", d.Error)
 		}
 	}
 
@@ -90,9 +91,9 @@ func CreateCode(username string) (*Success, error) {
 		Code:   randCode,
 	}
 
-	db = lib.DB.Create(&code)
-	if db.Error != nil {
-		lib.LogError(lib.LPanic, "Could not create code", db.Error)
+	d = db.DB.Create(&code)
+	if d.Error != nil {
+		lib.LogError(lib.LPanic, "Could not create code", d.Error)
 	}
 
 	return &Success{
@@ -106,10 +107,10 @@ func CreateCode(username string) (*Success, error) {
 func VerifyCode(username string, randCode string) (*Success, error) {
 	var code Code
 
-	db := lib.DB.Select("user_id, code, retry_count, created_at").Where("user_id = ?", username).First(&code)
-	if db.Error != nil && !gorm.IsRecordNotFoundError(db.Error) {
-		lib.LogError(lib.LPanic, "Could not read code", db.Error)
-	} else if db.RecordNotFound() {
+	d := db.DB.Select("user_id, code, retry_count, created_at").Where("user_id = ?", username).First(&code)
+	if d.Error != nil && !gorm.IsRecordNotFoundError(d.Error) {
+		lib.LogError(lib.LPanic, "Could not read code", d.Error)
+	} else if d.RecordNotFound() {
 		return nil, &RequestError{
 			Status: http.StatusNotFound,
 			Err:    ErrCodeNotFound,
@@ -119,9 +120,9 @@ func VerifyCode(username string, randCode string) (*Success, error) {
 	now := time.Now().UTC()
 	deadline := code.CreatedAt.UTC().Add(CodeTTL)
 	if code.RetryCount == CodeMaxRetries || now.After(deadline) {
-		db := lib.DB.Delete(&code)
-		if db.Error != nil {
-			lib.LogError(lib.LPanic, "Could not delete code", db.Error)
+		d := db.DB.Delete(&code)
+		if d.Error != nil {
+			lib.LogError(lib.LPanic, "Could not delete code", d.Error)
 		}
 
 		return nil, &RequestError{
@@ -132,9 +133,9 @@ func VerifyCode(username string, randCode string) (*Success, error) {
 
 	if code.Code != randCode {
 		rc := code.RetryCount + 1
-		db := lib.DB.Model(&code).Update("retry_count", rc)
-		if db.Error != nil && !gorm.IsRecordNotFoundError(db.Error) {
-			lib.LogError(lib.LPanic, "Could not update code", db.Error)
+		d := db.DB.Model(&code).Update("retry_count", rc)
+		if d.Error != nil && !gorm.IsRecordNotFoundError(d.Error) {
+			lib.LogError(lib.LPanic, "Could not update code", d.Error)
 		}
 
 		return nil, &RequestError{
@@ -143,9 +144,9 @@ func VerifyCode(username string, randCode string) (*Success, error) {
 		}
 	}
 
-	db = lib.DB.Delete(&code)
-	if db.Error != nil {
-		lib.LogError(lib.LPanic, "Could not delete code", db.Error)
+	d = db.DB.Delete(&code)
+	if d.Error != nil {
+		lib.LogError(lib.LPanic, "Could not delete code", d.Error)
 	}
 
 	return &Success{
@@ -155,5 +156,5 @@ func VerifyCode(username string, randCode string) (*Success, error) {
 }
 
 func init() {
-	lib.DB.AutoMigrate(&Code{})
+	db.DB.AutoMigrate(&Code{})
 }

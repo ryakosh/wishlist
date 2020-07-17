@@ -1,11 +1,15 @@
 package lib
 
 import (
+	"errors"
 	"regexp"
 
-	"github.com/gin-gonic/gin/binding"
 	"github.com/go-playground/validator/v10"
 )
+
+var ErrValidationFailed = errors.New("Field validation failed")
+
+var Validator = validator.New()
 
 var (
 	rgxUsername = regexp.MustCompile("^[a-z0-9_-]+$")
@@ -21,9 +25,5 @@ func username(fl validator.FieldLevel) bool {
 }
 
 func init() {
-	if v, ok := binding.Validator.Engine().(*validator.Validate); ok {
-		v.RegisterValidation("username", username)
-	} else {
-		LogError(LFatal, "Could not register validator", nil)
-	}
+	Validator.RegisterValidation("username", username)
 }

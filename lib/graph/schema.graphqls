@@ -1,0 +1,57 @@
+type User {
+  id: String!
+  firstName: String
+  lastName: String
+  friends(input: Page = { page: 1 }): [User!]!
+  friendRequests(input: Page = { page: 1 }): [User!]!
+}
+
+input Page {
+  page: Int!
+}
+
+type Token {
+  token: String!
+}
+
+input VerificationCode {
+  code: String!
+}
+
+input Login {
+  id: String!
+  password: String!
+}
+
+input UserId {
+  id: String!
+}
+
+input NewUser {
+  id: String!
+  firstName: String
+  lastName: String
+  email: String!
+  password: String!
+}
+
+input UpdateUser {
+  firstName: String
+  lastName: String
+}
+
+type Query {
+  user(id: String!): User!
+}
+
+type Mutation {
+  createUser(input: NewUser!): User!
+  updateUser(input: UpdateUser!): User!
+  deleteUser: String!
+  genToken(input: Login!): Token!
+  verifyEmail(input: VerificationCode!): Boolean!
+  requestFriendship(input: UserId!): User!
+  unRequestFriendship(input: UserId!): User!
+  acceptFriendRequest(input: UserId!): User!
+  rejectFriendshipRequest(input: UserId!): User!
+}

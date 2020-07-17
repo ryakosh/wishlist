@@ -1,10 +1,11 @@
-package lib
+package db
 
 import (
 	"os"
 
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/postgres" // Used for it's side effect
+	"github.com/ryakosh/wishlist/lib"
 )
 
 var (
@@ -19,11 +20,11 @@ func init() {
 
 	dbEnv = os.Getenv("WISHLIST_DB")
 	if len(dbEnv) == 0 {
-		LogError(LFatal, "'WISHLIST_DB' must be set", err)
+		lib.LogError(lib.LFatal, "'WISHLIST_DB' must be set", err)
 	}
 
 	DB, err = gorm.Open("postgres", dbEnv)
 	if err != nil {
-		LogError(LFatal, "Could not create or connect to the database", err)
+		lib.LogError(lib.LFatal, "Could not create or connect to the database", err)
 	}
 }
