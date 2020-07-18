@@ -1,5 +1,13 @@
 package model
 
+type User struct {
+	ID             string  `json:"id"`
+	FirstName      *string `json:"firstName"`
+	LastName       *string `json:"lastName"`
+	Friends        string  `json:"friends"`
+	FriendRequests string  `json:"friendRequests"`
+}
+
 type NewUser struct {
 	ID        string  `json:"id" validate:"username,max=64"`
 	FirstName *string `json:"firstName" validate:"omitempty,max=64"`
@@ -20,14 +28,6 @@ type Login struct {
 
 type VerificationCode struct {
 	Code string `json:"code" validate:"max=14"`
-}
-
-type User struct {
-	ID             string  `json:"id"`
-	FirstName      *string `json:"firstName"`
-	LastName       *string `json:"lastName"`
-	Friends        string  `json:"friends"`
-	FriendRequests string  `json:"friendRequests"`
 }
 
 type Page struct {

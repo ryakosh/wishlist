@@ -5,11 +5,3 @@ package model
 type Token struct {
 	Token string `json:"token"`
 }
-
-type UserID struct {
-	ID string `json:"id"`
-}
-
-type WishID struct {
-	ID int `json:"id"`
-}

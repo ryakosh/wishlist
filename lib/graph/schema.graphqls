@@ -14,23 +14,6 @@ type Token {
   token: String!
 }
 
-input VerificationCode {
-  code: String!
-}
-
-input Login {
-  id: String!
-  password: String!
-}
-
-input UserId {
-  id: String!
-}
-
-input WishId {
-  id: Int!
-}
-
 input NewUser {
   id: String!
   firstName: String
@@ -42,6 +25,26 @@ input NewUser {
 input UpdateUser {
   firstName: String
   lastName: String
+}
+
+input Login {
+  id: String!
+  password: String!
+}
+
+input VerificationCode {
+  code: String!
+}
+
+type Wish {
+  id: Int!
+  user: User!
+  name: String!
+  description: String!
+  link: String!
+  image: String!
+  claimers: [User!]!
+  fulfillers: [User!]!
 }
 
 input NewWish {
@@ -59,20 +62,9 @@ input UpdateWish {
   image: String
 }
 
-type Wish {
-  id: Int!
-  user: User!
-  name: String!
-  description: String!
-  link: String!
-  image: String!
-  claimers: [User!]!
-  fulfillers: [User!]!
-}
-
 type Query {
   user(id: String!): User!
-  wish(input: WishId!): Wish!
+  wish(wishId: Int!): Wish!
 }
 
 type Mutation {
@@ -81,16 +73,16 @@ type Mutation {
   deleteUser: String!
   genToken(input: Login!): Token!
   verifyEmail(input: VerificationCode!): Boolean!
-  requestFriendship(input: UserId!): User!
-  unRequestFriendship(input: UserId!): User!
-  acceptFriendRequest(input: UserId!): User!
-  rejectFriendshipRequest(input: UserId!): User!
+  requestFriendship(userId: String!): User!
+  unRequestFriendship(userId: String!): User!
+  acceptFriendRequest(userId: String!): User!
+  rejectFriendshipRequest(UserId: String!): User!
 
   createWish(input: NewWish!): Wish!
   updateWish(input: UpdateWish!): Wish!
-  deleteWish(input: WishId!): Int!
-  addWantToFulfill(input: WishId!): Wish!
-  addClaimer(input: WishId!): Int!
-  acceptClaimer(wishId: WishId!, claimer: UserId!): Wish!
-  rejectClaimer(wishId: WishId!, claimer: UserId!): Wish!
+  deleteWish(wishId: Int!): Int!
+  addWantToFulfill(wishId: Int!): Wish!
+  addClaimer(wishId: Int!): Int!
+  acceptClaimer(wishId: Int!, claimer: String!): Wish!
+  rejectClaimer(wishId: Int!, claimer: String!): Wish!
 }
