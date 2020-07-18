@@ -1,13 +1,13 @@
+input Page {
+  page: Int!
+}
+
 type User {
   id: String!
   firstName: String
   lastName: String
   friends(input: Page = { page: 1 }): [User!]!
   friendRequests(input: Page = { page: 1 }): [User!]!
-}
-
-input Page {
-  page: Int!
 }
 
 type Token {
@@ -27,6 +27,10 @@ input UserId {
   id: String!
 }
 
+input WishId {
+  id: Int!
+}
+
 input NewUser {
   id: String!
   firstName: String
@@ -40,8 +44,35 @@ input UpdateUser {
   lastName: String
 }
 
+input NewWish {
+  name: String!
+  description: String
+  link: String
+  image: String
+}
+
+input UpdateWish {
+  id: Int!
+  name: String
+  description: String
+  link: String
+  image: String
+}
+
+type Wish {
+  id: Int!
+  user: User!
+  name: String!
+  description: String!
+  link: String!
+  image: String!
+  claimers: [User!]!
+  fulfillers: [User!]!
+}
+
 type Query {
   user(id: String!): User!
+  wish(input: WishId!): Wish!
 }
 
 type Mutation {
@@ -54,4 +85,12 @@ type Mutation {
   unRequestFriendship(input: UserId!): User!
   acceptFriendRequest(input: UserId!): User!
   rejectFriendshipRequest(input: UserId!): User!
+
+  createWish(input: NewWish!): Wish!
+  updateWish(input: UpdateWish!): Wish!
+  deleteWish(input: WishId!): Int!
+  addWantToFulfill(input: WishId!): Wish!
+  addClaimer(input: WishId!): Int!
+  acceptClaimer(wishId: WishId!, claimer: UserId!): Wish!
+  rejectClaimer(wishId: WishId!, claimer: UserId!): Wish!
 }

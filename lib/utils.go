@@ -42,3 +42,11 @@ func LogError(lev, sum string, reason error) {
 		log.Fatalf("%s: %s\n\treason: %s", lev, sum, reason)
 	}
 }
+
+func DummyDefault(str *string) string { // TODO: Change this
+	if str == nil {
+		return ""
+	}
+
+	return *str
+}

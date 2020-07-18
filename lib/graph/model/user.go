@@ -22,10 +22,6 @@ type VerificationCode struct {
 	Code string `json:"code" validate:"max=14"`
 }
 
-type UserID struct {
-	ID string `json:"id" validate:"username,max=64"`
-}
-
 type User struct {
 	ID             string  `json:"id"`
 	FirstName      *string `json:"firstName"`
