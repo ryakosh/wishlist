@@ -13,12 +13,9 @@ import (
 )
 
 const (
-	// TokenCookieKey is a cookie key used for authentication
-	TokenCookieKey = "token"
-
 	// UserKey is a gin context keystore key used to indicate
 	// that a user is authenticated
-	UserKey = "user"
+	authedUserKey = "AuthedUserKey"
 )
 
 var (
@@ -121,8 +118,17 @@ func AreFriends(user, authedUser string) bool {
 // they require authentication or not, however it aborts requests if
 // the provided token is malformed, expired or not valid
 func Authenticate(c *gin.Context) (string, error) {
-	token := strings.Fields(c.GetHeader("Authorization"))
+	authedUser := c.GetString(authedUserKey)
+	if authedUser != "" {
+		return authedUser, nil
+	}
 
+	authorizationHeader := c.GetHeader("Authorization")
+	if authorizationHeader == "" {
+		return "", ErrUserNotAuthorized
+	}
+
+	token := strings.Fields(authorizationHeader)
 	if len(token) != 2 || token[0] != "Bearer" {
 		return "", ErrBearerTokenMalformed
 	}
@@ -139,7 +145,10 @@ func Authenticate(c *gin.Context) (string, error) {
 			return "", ErrUserNotFound
 		}
 
-		return sub.(string), nil
+		authedUser = sub.(string)
+		c.Set(authedUserKey, authedUser)
+
+		return authedUser, nil
 	} else if lib.IsMalformed(err) {
 		return "", lib.ErrTokenIsMalformed
 	} else if lib.HasExpired(err) {

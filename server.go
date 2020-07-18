@@ -2,7 +2,6 @@ package main
 
 import (
 	"log"
-	"net/http"
 	"os"
 
 	"github.com/99designs/gqlgen/graphql/handler"
@@ -10,7 +9,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/ryakosh/wishlist/lib"
 	"github.com/ryakosh/wishlist/lib/db"
-	dbmodel "github.com/ryakosh/wishlist/lib/db/model"
 	"github.com/ryakosh/wishlist/lib/graph"
 	"github.com/ryakosh/wishlist/lib/graph/generated"
 )
@@ -36,20 +34,6 @@ func playgroundHandler() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		h.ServeHTTP(c.Writer, c.Request)
 	}
-}
-
-// authedUser returns the authenticated user or empty string otherwise
-func authedUser(c *gin.Context) string {
-	authedUser, ok := c.Get(dbmodel.UserKey)
-	if !ok {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": dbmodel.ErrUserNotAuthorized.Error(),
-		})
-
-		return ""
-	}
-
-	return authedUser.(string)
 }
 
 func accessLogger() gin.HandlerFunc {

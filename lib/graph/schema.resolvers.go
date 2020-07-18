@@ -67,9 +67,11 @@ func (r *mutationResolver) CreateUser(ctx context.Context, input model.NewUser) 
 	}
 
 	return &model.User{
-		ID:        user.ID,
-		FirstName: user.FirstName,
-		LastName:  user.LastName,
+		ID:             user.ID,
+		FirstName:      user.FirstName,
+		LastName:       user.LastName,
+		Friends:        user.ID,
+		FriendRequests: user.ID,
 	}, nil
 }
 
@@ -94,8 +96,11 @@ func (r *mutationResolver) UpdateUser(ctx context.Context, input model.UpdateUse
 	}
 
 	return &model.User{
-		FirstName: input.FirstName,
-		LastName:  input.LastName,
+		ID:             authedUser,
+		FirstName:      input.FirstName,
+		LastName:       input.LastName,
+		Friends:        authedUser,
+		FriendRequests: authedUser,
 	}, nil
 }
 
@@ -221,9 +226,11 @@ func (r *mutationResolver) RequestFriendship(ctx context.Context, input model.Us
 	}
 
 	return &model.User{
-		ID:        requestee.ID,
-		FirstName: requestee.FirstName,
-		LastName:  requestee.LastName,
+		ID:             requestee.ID,
+		FirstName:      requestee.FirstName,
+		LastName:       requestee.LastName,
+		Friends:        requestee.ID,
+		FriendRequests: requestee.ID,
 	}, nil
 }
 
@@ -254,9 +261,11 @@ func (r *mutationResolver) UnRequestFriendship(ctx context.Context, input model.
 	}
 
 	return &model.User{
-		ID:        requestees[0].ID,
-		FirstName: requestees[0].FirstName,
-		LastName:  requestees[0].LastName,
+		ID:             requestees[0].ID,
+		FirstName:      requestees[0].FirstName,
+		LastName:       requestees[0].LastName,
+		Friends:        requestees[0].ID,
+		FriendRequests: requestees[0].ID,
 	}, nil
 }
 
@@ -308,9 +317,11 @@ func (r *mutationResolver) AcceptFriendRequest(ctx context.Context, input model.
 	}
 
 	return &model.User{
-		ID:        requestees[0].ID,
-		FirstName: requestees[0].FirstName,
-		LastName:  requestees[0].LastName,
+		ID:             requestees[0].ID,
+		FirstName:      requestees[0].FirstName,
+		LastName:       requestees[0].LastName,
+		Friends:        requestees[0].ID,
+		FriendRequests: requestees[0].ID,
 	}, nil
 }
 
@@ -344,9 +355,11 @@ func (r *mutationResolver) RejectFriendshipRequest(ctx context.Context, input mo
 	}
 
 	return &model.User{
-		ID:        requestees[0].ID,
-		FirstName: requestees[0].FirstName,
-		LastName:  requestees[0].LastName,
+		ID:             requestees[0].ID,
+		FirstName:      requestees[0].FirstName,
+		LastName:       requestees[0].LastName,
+		Friends:        requestees[0].ID,
+		FriendRequests: requestees[0].ID,
 	}, nil
 }
 
@@ -728,6 +741,10 @@ func (r *userResolver) Friends(ctx context.Context, obj *model.User, input *mode
 		return nil, err
 	}
 
+	if authedUser != obj.ID {
+		return nil, dbmodel.ErrUserNotAuthorized
+	}
+
 	err = lib.Validator.Struct(input)
 	if err != nil {
 		return nil, lib.ErrValidationFailed
@@ -742,9 +759,11 @@ func (r *userResolver) Friends(ctx context.Context, obj *model.User, input *mode
 
 	for _, f := range friends {
 		res = append(res, &model.User{
-			ID:        f.ID,
-			FirstName: f.FirstName,
-			LastName:  f.LastName,
+			ID:             f.ID,
+			FirstName:      f.FirstName,
+			LastName:       f.LastName,
+			Friends:        f.ID,
+			FriendRequests: f.ID,
 		})
 	}
 
@@ -761,6 +780,10 @@ func (r *userResolver) FriendRequests(ctx context.Context, obj *model.User, inpu
 		return nil, err
 	}
 
+	if authedUser != obj.ID {
+		return nil, dbmodel.ErrUserNotAuthorized
+	}
+
 	err = lib.Validator.Struct(input)
 	if err != nil {
 		return nil, lib.ErrValidationFailed
@@ -775,9 +798,11 @@ func (r *userResolver) FriendRequests(ctx context.Context, obj *model.User, inpu
 
 	for _, r := range reqs {
 		res = append(res, &model.User{
-			ID:        r.ID,
-			FirstName: r.FirstName,
-			LastName:  r.LastName,
+			ID:             r.ID,
+			FirstName:      r.FirstName,
+			LastName:       r.LastName,
+			Friends:        r.ID,
+			FriendRequests: r.ID,
 		})
 	}
 
@@ -834,9 +859,11 @@ func (r *wishResolver) Claimers(ctx context.Context, obj *model.Wish) ([]*model.
 
 	for _, c := range claimers {
 		res = append(res, &model.User{
-			ID:        c.ID,
-			FirstName: c.FirstName,
-			LastName:  c.LastName,
+			ID:             c.ID,
+			FirstName:      c.FirstName,
+			LastName:       c.LastName,
+			Friends:        c.ID,
+			FriendRequests: c.ID,
 		})
 	}
 
@@ -869,9 +896,11 @@ func (r *wishResolver) Fulfillers(ctx context.Context, obj *model.Wish) ([]*mode
 
 	for _, f := range fulfillers {
 		res = append(res, &model.User{
-			ID:        f.ID,
-			FirstName: f.FirstName,
-			LastName:  f.LastName,
+			ID:             f.ID,
+			FirstName:      f.FirstName,
+			LastName:       f.LastName,
+			Friends:        f.ID,
+			FriendRequests: f.ID,
 		})
 	}
 
