@@ -1,13 +1,9 @@
-input Page {
-  page: Int!
-}
-
 type User {
   id: String!
   firstName: String
   lastName: String
-  friends(input: Page = { page: 1 }): [User!]!
-  friendRequests(input: Page = { page: 1 }): [User!]!
+  friends(page: Int! =  1, limit: Int! = 10 ): [User!]!
+  friendRequests(page: Int! = 1, limit: Int! = 10): [User!]!
 }
 
 type Token {
@@ -43,8 +39,8 @@ type Wish {
   description: String!
   link: String!
   image: String!
-  claimers: [User!]!
-  fulfillers: [User!]!
+  claimers(page: Int! =  1, limit: Int! = 10 ): [User!]!
+  fulfillers(page: Int! =  1, limit: Int! = 10 ): [User!]!
 }
 
 input NewWish {

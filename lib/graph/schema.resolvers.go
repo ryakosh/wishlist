@@ -731,7 +731,7 @@ func (r *queryResolver) Wish(ctx context.Context, wishID int) (*model.Wish, erro
 	}, nil
 }
 
-func (r *userResolver) Friends(ctx context.Context, obj *model.User, input *model.Page) ([]*model.User, error) {
+func (r *userResolver) Friends(ctx context.Context, obj *model.User, page int, limit int) ([]*model.User, error) {
 	var friends []dbmodel.User
 	var res []*model.User
 
@@ -745,14 +745,20 @@ func (r *userResolver) Friends(ctx context.Context, obj *model.User, input *mode
 		return nil, dbmodel.ErrUserNotAuthorized
 	}
 
-	err = lib.Validator.Struct(input)
+	err = lib.Validator.Struct(struct {
+		Page  int `validate:"min=1"`
+		Limit int `validate:"min=1,max=10"`
+	}{
+		Page:  page,
+		Limit: limit,
+	})
 	if err != nil {
 		return nil, lib.ErrValidationFailed
 	}
 
 	d := r.DB.Model(&dbmodel.User{ID: authedUser}).Select(
 		"id, first_name, last_name").Offset(
-		(input.Page * 10) - 10).Limit(10).Association("Friends").Find(&friends)
+		(page * limit) - limit).Limit(limit).Association("Friends").Find(&friends)
 	if d.Error != nil && !gorm.IsRecordNotFoundError(d.Error) {
 		lib.LogError(lib.LPanic, "Could not read user's friends", d.Error)
 	}
@@ -770,7 +776,7 @@ func (r *userResolver) Friends(ctx context.Context, obj *model.User, input *mode
 	return res, nil
 }
 
-func (r *userResolver) FriendRequests(ctx context.Context, obj *model.User, input *model.Page) ([]*model.User, error) {
+func (r *userResolver) FriendRequests(ctx context.Context, obj *model.User, page int, limit int) ([]*model.User, error) {
 	var reqs []dbmodel.User
 	var res []*model.User
 
@@ -784,14 +790,20 @@ func (r *userResolver) FriendRequests(ctx context.Context, obj *model.User, inpu
 		return nil, dbmodel.ErrUserNotAuthorized
 	}
 
-	err = lib.Validator.Struct(input)
+	err = lib.Validator.Struct(struct {
+		Page  int `validate:"min=1"`
+		Limit int `validate:"min=1,max=10"`
+	}{
+		Page:  page,
+		Limit: limit,
+	})
 	if err != nil {
 		return nil, lib.ErrValidationFailed
 	}
 
 	d := r.DB.Model(&dbmodel.User{ID: authedUser}).Select(
 		"id, first_name, last_name").Offset(
-		(input.Page * 10) - 10).Limit(10).Association("FriendRequests").Find(&reqs)
+		(page * limit) - limit).Limit(limit).Association("FriendRequests").Find(&reqs)
 	if d.Error != nil && !gorm.IsRecordNotFoundError(d.Error) {
 		lib.LogError(lib.LPanic, "Could not read user's friend requests", d.Error)
 	}
@@ -833,7 +845,7 @@ func (r *wishResolver) User(ctx context.Context, obj *model.Wish) (*model.User, 
 	}, nil
 }
 
-func (r *wishResolver) Claimers(ctx context.Context, obj *model.Wish) ([]*model.User, error) {
+func (r *wishResolver) Claimers(ctx context.Context, obj *model.Wish, page int, limit int) ([]*model.User, error) {
 	var wish dbmodel.Wish
 	var claimers []dbmodel.User
 	var res []*model.User
@@ -844,7 +856,18 @@ func (r *wishResolver) Claimers(ctx context.Context, obj *model.Wish) ([]*model.
 		return nil, err
 	}
 
-	d := r.DB.Select("id, user_id").First(&wish, obj.Claimers)
+	err = lib.Validator.Struct(struct {
+		Page  int `validate:"min=1"`
+		Limit int `validate:"min=1,max=10"`
+	}{
+		Page:  page,
+		Limit: limit,
+	})
+	if err != nil {
+		return nil, lib.ErrValidationFailed
+	}
+
+	d := r.DB.Select("id user_id").First(&wish, obj.Claimers)
 	if d.Error != nil && !gorm.IsRecordNotFoundError(d.Error) {
 		lib.LogError(lib.LPanic, "Could not read wish", d.Error)
 	} else if d.RecordNotFound() {
@@ -855,7 +878,8 @@ func (r *wishResolver) Claimers(ctx context.Context, obj *model.Wish) ([]*model.
 		return nil, dbmodel.ErrUserNotAuthorized
 	}
 
-	r.DB.Model(&dbmodel.Wish{ID: obj.Claimers}).Association("Claimers").Find(&claimers)
+	r.DB.Model(&dbmodel.Wish{ID: obj.Claimers}).Offset(
+		(page * limit) - limit).Limit(limit).Association("Claimers").Find(&claimers)
 
 	for _, c := range claimers {
 		res = append(res, &model.User{
@@ -870,7 +894,7 @@ func (r *wishResolver) Claimers(ctx context.Context, obj *model.Wish) ([]*model.
 	return res, nil
 }
 
-func (r *wishResolver) Fulfillers(ctx context.Context, obj *model.Wish) ([]*model.User, error) {
+func (r *wishResolver) Fulfillers(ctx context.Context, obj *model.Wish, page int, limit int) ([]*model.User, error) {
 	var wish dbmodel.Wish
 	var fulfillers []dbmodel.User
 	var res []*model.User
@@ -879,6 +903,17 @@ func (r *wishResolver) Fulfillers(ctx context.Context, obj *model.Wish) ([]*mode
 	authedUser, err := dbmodel.Authenticate(c)
 	if err != nil {
 		return nil, err
+	}
+
+	err = lib.Validator.Struct(struct {
+		Page  int `validate:"min=1"`
+		Limit int `validate:"min=1,max=10"`
+	}{
+		Page:  page,
+		Limit: limit,
+	})
+	if err != nil {
+		return nil, lib.ErrValidationFailed
 	}
 
 	d := r.DB.Select("id, user_id").First(&wish, obj.Fulfillers)
@@ -892,7 +927,8 @@ func (r *wishResolver) Fulfillers(ctx context.Context, obj *model.Wish) ([]*mode
 		return nil, dbmodel.ErrUserNotAuthorized
 	}
 
-	r.DB.Model(&dbmodel.Wish{ID: obj.Fulfillers}).Association("Fulfillers").Find(&fulfillers)
+	r.DB.Model(&dbmodel.Wish{ID: obj.Fulfillers}).Offset(
+		(page * limit) - limit).Limit(limit).Association("Fulfillers").Find(&fulfillers)
 
 	for _, f := range fulfillers {
 		res = append(res, &model.User{

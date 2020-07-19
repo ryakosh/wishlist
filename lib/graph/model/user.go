@@ -29,7 +29,3 @@ type Login struct {
 type VerificationCode struct {
 	Code string `json:"code" validate:"max=14"`
 }
-
-type Page struct {
-	Page int `json:"page" validate:"min=1"`
-}
