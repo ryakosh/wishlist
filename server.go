@@ -12,7 +12,6 @@ import (
 	"github.com/ryakosh/wishlist/lib/db"
 	"github.com/ryakosh/wishlist/lib/graph"
 	"github.com/ryakosh/wishlist/lib/graph/generated"
-	"github.com/ryakosh/wishlist/lib/graph/model"
 )
 
 const (
@@ -45,65 +44,6 @@ func calcComplexity(complexityRoot *generated.ComplexityRoot) {
 	complexityRoot.User.FriendRequests = calcUsersComplexity
 	complexityRoot.Wish.Claimers = calcUsersComplexity
 	complexityRoot.Wish.Fulfillers = calcUsersComplexity
-	complexityRoot.Wish.User = func(childComplexity int) int {
-		return childComplexity + defaultRequestComplexity
-	}
-
-	complexityRoot.Query.User = func(childComplexity int, _ string) int {
-		return childComplexity + defaultRequestComplexity
-	}
-	complexityRoot.Query.Wish = func(childComplexity int, _ int) int {
-		return childComplexity + defaultRequestComplexity
-	}
-	complexityRoot.Mutation.CreateUser = func(childComplexity int, _ model.NewUser) int {
-		return childComplexity + defaultRequestComplexity
-	}
-	complexityRoot.Mutation.UpdateUser = func(childComplexity int, _ model.UpdateUser) int {
-		return childComplexity + defaultRequestComplexity
-	}
-	complexityRoot.Mutation.DeleteUser = func(childComplexity int) int {
-		return childComplexity + defaultRequestComplexity
-	}
-	complexityRoot.Mutation.GenToken = func(childComplexity int, _ model.Login) int {
-		return childComplexity + defaultRequestComplexity
-	}
-	complexityRoot.Mutation.VerifyEmail = func(childComplexity int, _ model.VerificationCode) int {
-		return childComplexity + defaultRequestComplexity
-	}
-
-	complexityRoot.Mutation.RequestFriendship = func(childComplexity int, _ string) int {
-		return childComplexity + defaultRequestComplexity
-	}
-	complexityRoot.Mutation.UnRequestFriendship = func(childComplexity int, _ string) int {
-		return childComplexity + defaultRequestComplexity
-	}
-	complexityRoot.Mutation.AcceptFriendRequest = func(childComplexity int, _ string) int {
-		return childComplexity + defaultRequestComplexity
-	}
-	complexityRoot.Mutation.RejectFriendshipRequest = func(childComplexity int, _ string) int {
-		return childComplexity + defaultRequestComplexity
-	}
-	complexityRoot.Mutation.CreateWish = func(childComplexity int, _ model.NewWish) int {
-		return childComplexity + defaultRequestComplexity
-	}
-	complexityRoot.Mutation.UpdateWish = func(childComplexity int, _ model.UpdateWish) int {
-		return childComplexity + defaultRequestComplexity
-	}
-	complexityRoot.Mutation.DeleteWish = func(childComplexity int, _ int) int {
-		return childComplexity + defaultRequestComplexity
-	}
-	complexityRoot.Mutation.AddWantToFulfill = func(childComplexity int, _ int) int {
-		return childComplexity + defaultRequestComplexity
-	}
-	complexityRoot.Mutation.AddClaimer = func(childComplexity int, _ int) int {
-		return childComplexity + defaultRequestComplexity
-	}
-	complexityRoot.Mutation.AcceptClaimer = func(childComplexity int, _ int, _ string) int {
-		return childComplexity + defaultRequestComplexity
-	}
-	complexityRoot.Mutation.RejectClaimer = func(childComplexity int, _ int, _ string) int {
-		return childComplexity + defaultRequestComplexity
-	}
 }
 
 func playgroundHandler() gin.HandlerFunc {
