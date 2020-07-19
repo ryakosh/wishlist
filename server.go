@@ -27,14 +27,13 @@ func graphqlHandler() gin.HandlerFunc {
 	calcComplexity(&config.Complexity)
 
 	h := handler.NewDefaultServer(generated.NewExecutableSchema(config))
-	h.Use(extension.FixedComplexityLimit(150))
+	h.Use(extension.FixedComplexityLimit(100))
 
 	return func(c *gin.Context) {
 		h.ServeHTTP(c.Writer, c.Request)
 	}
 }
 
-// TODO: Be a bit more smart about complexity calculations
 func calcComplexity(complexityRoot *generated.ComplexityRoot) {
 	calcUsersComplexity := func(childComplexity int, _ int, limit int) int {
 		return (childComplexity * limit) + defaultRequestComplexity
