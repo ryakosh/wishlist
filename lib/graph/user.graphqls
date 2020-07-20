@@ -6,10 +6,6 @@ type User {
   friendRequests(page: Int! = 1, limit: Int! = 10): [User!]!
 }
 
-type Token {
-  token: String!
-}
-
 input NewUser {
   id: String!
   firstName: String

@@ -41,7 +41,7 @@ func calcComplexity(complexityRoot *generated.ComplexityRoot) {
 
 	complexityRoot.User.Friends = calcUsersComplexity
 	complexityRoot.User.FriendRequests = calcUsersComplexity
-	complexityRoot.Wish.Claimers = calcUsersComplexity
+	complexityRoot.Wish.FulfillmentClaimers = calcUsersComplexity
 	complexityRoot.Wish.Fulfillers = calcUsersComplexity
 }
 

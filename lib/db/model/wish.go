@@ -19,7 +19,7 @@ var ErrWishNotFound = errors.New("Wish not found")
 // Wish represents a user's wish to buy something, do something etc.
 type Wish struct {
 	ID            int
-	UserID        string
+	Owner         string
 	Name          string `gorm:"type:varchar(256)"`
 	Description   string `gorm:"type:varchar(1024)"`
 	Link          string

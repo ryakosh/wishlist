@@ -119,24 +119,22 @@ func (r *mutationResolver) DeleteUser(ctx context.Context) (string, error) {
 	return authedUser, nil
 }
 
-func (r *mutationResolver) GenToken(ctx context.Context, input model.Login) (*model.Token, error) {
+func (r *mutationResolver) GenToken(ctx context.Context, input model.Login) (string, error) {
 	var user dbmodel.User
 
 	err := lib.Validator.Struct(&input)
 	if err != nil {
-		return nil, lib.ErrValidationFailed
+		return "", lib.ErrValidationFailed
 	}
 
 	d := r.DB.Select("id, email, password").Where("id = ?", input.ID).First(&user)
 	if d.Error != nil && !gorm.IsRecordNotFoundError(d.Error) {
 		lib.LogError(lib.LPanic, "Could not read user", d.Error)
 	} else if d.RecordNotFound() || !dbmodel.VerifyPassword(input.Password, user.Password) {
-		return nil, dbmodel.ErrUnmOrPwdIncorrect
+		return "", dbmodel.ErrUnmOrPwdIncorrect
 	}
 
-	return &model.Token{
-		Token: lib.Encode(user.ID, user.Email),
-	}, nil
+	return lib.Encode(user.ID, user.Email), nil
 }
 
 func (r *mutationResolver) VerifyEmail(ctx context.Context, code string) (bool, error) {
@@ -376,11 +374,11 @@ func (r *mutationResolver) CreateWish(ctx context.Context, input model.NewWish) 
 	}
 
 	wish := dbmodel.Wish{
-		UserID:      authedUser,
+		Owner:       authedUser,
 		Name:        input.Name,
-		Description: lib.DummyDefault(input.Description),
-		Link:        lib.DummyDefault(input.Link),
-		Image:       lib.DummyDefault(input.Image),
+		Description: input.Description,
+		Link:        input.Link,
+		Image:       input.Image,
 	}
 
 	d := r.DB.Create(&wish)
@@ -390,7 +388,7 @@ func (r *mutationResolver) CreateWish(ctx context.Context, input model.NewWish) 
 
 	return &model.Wish{
 		ID:          wish.ID,
-		User:        authedUser,
+		Owner:       authedUser,
 		Name:        wish.Name,
 		Description: wish.Description,
 		Link:        wish.Link,
@@ -412,22 +410,22 @@ func (r *mutationResolver) UpdateWish(ctx context.Context, input model.UpdateWis
 		return nil, lib.ErrValidationFailed
 	}
 
-	d := r.DB.Select("id, name, user_id, description, link, image").First(&wish, input.ID)
+	d := r.DB.Select("id, name, owner, description, link, image").First(&wish, input.ID)
 	if d.Error != nil && !gorm.IsRecordNotFoundError(d.Error) {
 		lib.LogError(lib.LPanic, "Could not read wish", d.Error)
 	} else if d.RecordNotFound() {
 		return nil, dbmodel.ErrWishNotFound
 	}
 
-	if wish.UserID != authedUser {
+	if wish.Owner != authedUser {
 		return nil, dbmodel.ErrUserNotAuthorized
 	}
 
 	d = r.DB.Model(&wish).Updates(&dbmodel.Wish{
-		Name:        lib.DummyDefault(input.Name),
-		Description: lib.DummyDefault(input.Description),
-		Link:        lib.DummyDefault(input.Link),
-		Image:       lib.DummyDefault(input.Image),
+		Name:        input.Name,
+		Description: input.Description,
+		Link:        input.Link,
+		Image:       input.Image,
 	})
 	if d.Error != nil {
 		lib.LogError(lib.LPanic, "Could not update wish", d.Error)
@@ -435,6 +433,7 @@ func (r *mutationResolver) UpdateWish(ctx context.Context, input model.UpdateWis
 
 	return &model.Wish{
 		ID:          wish.ID,
+		Owner:       wish.Owner,
 		Name:        wish.Name,
 		Description: wish.Description,
 		Link:        wish.Link,
@@ -456,13 +455,13 @@ func (r *mutationResolver) DeleteWish(ctx context.Context, id int) (int, error) 
 		return 0, lib.ErrValidationFailed
 	}
 
-	d := r.DB.Select("id, user_id").First(&wish, id)
+	d := r.DB.Select("id, owner").First(&wish, id)
 	if d.Error != nil && !gorm.IsRecordNotFoundError(d.Error) {
 		lib.LogError(lib.LPanic, "Could not read wish", d.Error)
 	} else if d.RecordNotFound() {
 		return 0, dbmodel.ErrWishNotFound
 	}
-	if wish.UserID != authedUser {
+	if wish.Owner != authedUser {
 		return 0, dbmodel.ErrUserNotAuthorized
 	}
 
@@ -488,14 +487,14 @@ func (r *mutationResolver) AddWantToFulfill(ctx context.Context, id int) (*model
 		return nil, lib.ErrValidationFailed
 	}
 
-	d := r.DB.Select("id, name, user_id, description, link, image").First(&wish, id)
+	d := r.DB.Select("id, name, owner, description, link, image").First(&wish, id)
 	if d.Error != nil && !gorm.IsRecordNotFoundError(d.Error) {
 		lib.LogError(lib.LPanic, "Could not read wish", d.Error)
 	} else if d.RecordNotFound() {
 		return nil, dbmodel.ErrWishNotFound
 	}
 
-	if authedUser == wish.UserID || !dbmodel.AreFriends(wish.UserID, authedUser) {
+	if authedUser == wish.Owner || !dbmodel.AreFriends(wish.Owner, authedUser) {
 		return nil, dbmodel.ErrUserNotAuthorized
 	}
 
@@ -512,7 +511,7 @@ func (r *mutationResolver) AddWantToFulfill(ctx context.Context, id int) (*model
 
 	return &model.Wish{
 		ID:          wish.ID,
-		User:        wish.UserID,
+		Owner:       wish.Owner,
 		Name:        wish.Name,
 		Description: wish.Description,
 		Link:        wish.Link,
@@ -534,7 +533,7 @@ func (r *mutationResolver) ClaimFulfillment(ctx context.Context, id int) (*model
 		return nil, lib.ErrValidationFailed
 	}
 
-	d := r.DB.Select("id, name, user_id, description, link, image").First(&wish, id)
+	d := r.DB.Select("id, name, owner, description, link, image").First(&wish, id)
 	if d.Error != nil && !gorm.IsRecordNotFoundError(d.Error) {
 		lib.LogError(lib.LPanic, "Could not read wish", d.Error)
 	} else if d.RecordNotFound() {
@@ -569,7 +568,7 @@ func (r *mutationResolver) ClaimFulfillment(ctx context.Context, id int) (*model
 
 	return &model.Wish{
 		ID:          wish.ID,
-		User:        wish.UserID,
+		Owner:       wish.Owner,
 		Name:        wish.Name,
 		Description: wish.Description,
 		Link:        wish.Link,
@@ -623,12 +622,12 @@ func (r *Resolver) handleClaimer(ctx context.Context, wishID int,
 		return nil, err
 	}
 
-	d := r.DB.Select("id, name, user_id, description, link, image").First(&wish, wishID)
+	d := r.DB.Select("id, name, owner, description, link, image").First(&wish, wishID)
 	if d.RecordNotFound() {
 		return nil, dbmodel.ErrWishNotFound
 	}
 
-	if authedUser != wish.UserID {
+	if authedUser != wish.Owner {
 		return nil, dbmodel.ErrUserNotAuthorized
 	}
 
@@ -656,7 +655,7 @@ func (r *Resolver) handleClaimer(ctx context.Context, wishID int,
 
 	return &model.Wish{
 		ID:          wish.ID,
-		User:        wish.UserID,
+		Owner:       wish.Owner,
 		Name:        wish.Name,
 		Description: wish.Description,
 		Link:        wish.Link,
@@ -691,14 +690,14 @@ func (r *Resolver) wish(ctx context.Context, wishID int) (*model.Wish, error) {
 		return nil, dbmodel.ErrWishNotFound
 	}
 	return &model.Wish{
-		ID:          wish.ID,
-		User:        wish.UserID,
-		Name:        wish.Name,
-		Description: wish.Description,
-		Link:        wish.Link,
-		Image:       wish.Image,
-		Claimers:    wish.ID,
-		Fulfillers:  wish.ID,
+		ID:                  wish.ID,
+		Owner:               wish.Owner,
+		Name:                wish.Name,
+		Description:         wish.Description,
+		Link:                wish.Link,
+		Image:               wish.Image,
+		FulfillmentClaimers: wish.ID,
+		Fulfillers:          wish.ID,
 	}, nil
 }
 

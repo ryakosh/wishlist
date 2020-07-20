@@ -63,12 +63,12 @@ var argonConfig = &argon2id.Params{
 // User represents a user in the app
 type User struct {
 	ID              string `gorm:"type:varchar(64)"`
-	Email           string `gorm:"varchar(254);unique"`
+	Email           string `gorm:"type:varchar(254);unique"`
 	IsEmailVerified bool
-	Password        string  `gorm:"varchar(256)"`
+	Password        string  `gorm:"type:varchar(256)"`
 	FirstName       *string `gorm:"type:varchar(64)"`
 	LastName        *string `gorm:"type:varchar(64)"`
-	Wishes          []Wish
+	Wishes          []Wish  `gorm:"foreignkey:Owner"`
 	Code            Code
 	Friends         []*User `gorm:"many2many:friendships;association_jointable_foreignkey:friend_id"`
 	FriendRequests  []*User `gorm:"many2many:friendrequests;association_jointable_foreignkey:requester_id"`

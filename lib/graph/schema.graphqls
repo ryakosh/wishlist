@@ -7,7 +7,7 @@ type Mutation {
   createUser(input: NewUser!): User!
   updateUser(input: UpdateUser!): User!
   deleteUser: String!
-  genToken(input: Login!): Token!
+  genToken(input: Login!): String!
   verifyEmail(code: String!): Boolean!
   sendFriendRequest(id: String!): User!
   unSendFriendRequest(id: String!): User!

@@ -5,6 +5,7 @@ package graph
 
 import (
 	"context"
+	"log"
 
 	"github.com/jinzhu/gorm"
 	"github.com/ryakosh/wishlist/lib"
@@ -14,11 +15,13 @@ import (
 	"github.com/ryakosh/wishlist/lib/graph/model"
 )
 
-func (r *wishResolver) User(ctx context.Context, obj *model.Wish) (*model.User, error) {
-	return r.user(ctx, obj.User)
+func (r *wishResolver) Owner(ctx context.Context, obj *model.Wish) (*model.User, error) {
+	log.Println(obj.Owner)
+
+	return r.user(ctx, obj.Owner)
 }
 
-func (r *wishResolver) Claimers(ctx context.Context, obj *model.Wish, page int, limit int) ([]*model.User, error) {
+func (r *wishResolver) FulfillmentClaimers(ctx context.Context, obj *model.Wish, page int, limit int) ([]*model.User, error) {
 	err := lib.Validator.Struct(struct {
 		Page  int `validate:"min=1"`
 		Limit int `validate:"min=1,max=10"`
@@ -30,7 +33,7 @@ func (r *wishResolver) Claimers(ctx context.Context, obj *model.Wish, page int, 
 		return nil, lib.ErrValidationFailed
 	}
 
-	return r.wishUsers(ctx, obj.Claimers, dbmodel.WishClaimersAsso, page, limit)
+	return r.wishUsers(ctx, obj.FulfillmentClaimers, dbmodel.WishClaimersAsso, page, limit)
 }
 
 func (r *wishResolver) Fulfillers(ctx context.Context, obj *model.Wish, page int, limit int) ([]*model.User, error) {
@@ -48,17 +51,6 @@ func (r *wishResolver) Fulfillers(ctx context.Context, obj *model.Wish, page int
 	return r.wishUsers(ctx, obj.Fulfillers, dbmodel.WishFulFillersAsso, page, limit)
 }
 
-// Wish returns generated.WishResolver implementation.
-func (r *Resolver) Wish() generated.WishResolver { return &wishResolver{r} }
-
-type wishResolver struct{ *Resolver }
-
-// !!! WARNING !!!
-// The code below was going to be deleted when updating resolvers. It has been copied here so you have
-// one last chance to move it out of harms way if you want. There are two reasons this happens:
-//  - When renaming or deleting a resolver the old code will be put in here. You can safely delete
-//    it when you're done.
-//  - You have helper methods in this file. Move them out to keep these resolver files clean.
 func (r *Resolver) wishUsers(ctx context.Context, wishID int, asso db.Association, page int, limit int) ([]*model.User, error) {
 	var wish dbmodel.Wish
 	var users []dbmodel.User
@@ -70,14 +62,14 @@ func (r *Resolver) wishUsers(ctx context.Context, wishID int, asso db.Associatio
 		return nil, err
 	}
 
-	d := r.DB.Select("id, user_id").First(&wish, wishID)
+	d := r.DB.Select("id, owne").First(&wish, wishID)
 	if d.Error != nil && !gorm.IsRecordNotFoundError(d.Error) {
 		lib.LogError(lib.LPanic, "Could not read wish", d.Error)
 	} else if d.RecordNotFound() {
 		return nil, dbmodel.ErrWishNotFound
 	}
 
-	if authedUser != wish.UserID {
+	if authedUser != wish.Owner {
 		return nil, dbmodel.ErrUserNotAuthorized
 	}
 
@@ -96,3 +88,8 @@ func (r *Resolver) wishUsers(ctx context.Context, wishID int, asso db.Associatio
 
 	return res, nil
 }
+
+// Wish returns generated.WishResolver implementation.
+func (r *Resolver) Wish() generated.WishResolver { return &wishResolver{r} }
+
+type wishResolver struct{ *Resolver }
