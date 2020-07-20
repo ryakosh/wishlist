@@ -246,7 +246,7 @@ func (r *mutationResolver) UnSendFriendRequest(ctx context.Context, id string) (
 		return nil, lib.ErrValidationFailed
 	}
 
-	err = r.DB.Model(&dbmodel.User{ID: id}).Where("requester_id = ?", authedUser).Association("FriendRequests").Find(&requestees).Error
+	err = r.DB.Model(&dbmodel.User{ID: id}).Select("id, first_name, last_name").Where("requester_id = ?", authedUser).Association("FriendRequests").Find(&requestees).Error
 	if gorm.IsRecordNotFoundError(err) {
 		return nil, dbmodel.ErrUserNotFound
 	} else if err != nil {
@@ -281,7 +281,7 @@ func (r *mutationResolver) AcceptFriendRequest(ctx context.Context, id string) (
 		return nil, lib.ErrValidationFailed
 	}
 
-	d := r.DB.Model(&dbmodel.User{ID: authedUser}).Select("id").Where(
+	d := r.DB.Model(&dbmodel.User{ID: authedUser}).Select("id, first_name, last_name").Where(
 		"requester_id = ?", id).Related(&requestees, "FriendRequests")
 	if d.Error != nil && !gorm.IsRecordNotFoundError(d.Error) {
 		lib.LogError(lib.LPanic, "Could not read user's friend requests", d.Error)
@@ -337,7 +337,7 @@ func (r *mutationResolver) RejectFriendRequest(ctx context.Context, id string) (
 		return nil, lib.ErrValidationFailed
 	}
 
-	d := r.DB.Model(&dbmodel.User{ID: authedUser}).Select("id").Where(
+	d := r.DB.Model(&dbmodel.User{ID: authedUser}).Select("id, first_name, last_name").Where(
 		"requester_id = ?", id).Related(&requestees, "FriendRequests")
 	if d.Error != nil && !gorm.IsRecordNotFoundError(d.Error) {
 		lib.LogError(lib.LPanic, "Could not read user's friend requests", d.Error)
@@ -387,12 +387,14 @@ func (r *mutationResolver) CreateWish(ctx context.Context, input model.NewWish) 
 	}
 
 	return &model.Wish{
-		ID:          wish.ID,
-		Owner:       authedUser,
-		Name:        wish.Name,
-		Description: wish.Description,
-		Link:        wish.Link,
-		Image:       wish.Image,
+		ID:                  wish.ID,
+		Owner:               authedUser,
+		Name:                wish.Name,
+		Description:         wish.Description,
+		Link:                wish.Link,
+		Image:               wish.Image,
+		FulfillmentClaimers: wish.ID,
+		Fulfillers:          wish.ID,
 	}, nil
 }
 
@@ -432,12 +434,14 @@ func (r *mutationResolver) UpdateWish(ctx context.Context, input model.UpdateWis
 	}
 
 	return &model.Wish{
-		ID:          wish.ID,
-		Owner:       wish.Owner,
-		Name:        wish.Name,
-		Description: wish.Description,
-		Link:        wish.Link,
-		Image:       wish.Image,
+		ID:                  wish.ID,
+		Owner:               wish.Owner,
+		Name:                wish.Name,
+		Description:         wish.Description,
+		Link:                wish.Link,
+		Image:               wish.Image,
+		FulfillmentClaimers: wish.ID,
+		Fulfillers:          wish.ID,
 	}, nil
 }
 
@@ -510,12 +514,14 @@ func (r *mutationResolver) AddWantToFulfill(ctx context.Context, id int) (*model
 	}
 
 	return &model.Wish{
-		ID:          wish.ID,
-		Owner:       wish.Owner,
-		Name:        wish.Name,
-		Description: wish.Description,
-		Link:        wish.Link,
-		Image:       wish.Image,
+		ID:                  wish.ID,
+		Owner:               wish.Owner,
+		Name:                wish.Name,
+		Description:         wish.Description,
+		Link:                wish.Link,
+		Image:               wish.Image,
+		FulfillmentClaimers: wish.ID,
+		Fulfillers:          wish.ID,
 	}, nil
 }
 
@@ -567,12 +573,14 @@ func (r *mutationResolver) ClaimFulfillment(ctx context.Context, id int) (*model
 	}
 
 	return &model.Wish{
-		ID:          wish.ID,
-		Owner:       wish.Owner,
-		Name:        wish.Name,
-		Description: wish.Description,
-		Link:        wish.Link,
-		Image:       wish.Image,
+		ID:                  wish.ID,
+		Owner:               wish.Owner,
+		Name:                wish.Name,
+		Description:         wish.Description,
+		Link:                wish.Link,
+		Image:               wish.Image,
+		FulfillmentClaimers: wish.ID,
+		Fulfillers:          wish.ID,
 	}, nil
 }
 
@@ -654,12 +662,14 @@ func (r *Resolver) handleClaimer(ctx context.Context, wishID int,
 	}
 
 	return &model.Wish{
-		ID:          wish.ID,
-		Owner:       wish.Owner,
-		Name:        wish.Name,
-		Description: wish.Description,
-		Link:        wish.Link,
-		Image:       wish.Image,
+		ID:                  wish.ID,
+		Owner:               wish.Owner,
+		Name:                wish.Name,
+		Description:         wish.Description,
+		Link:                wish.Link,
+		Image:               wish.Image,
+		FulfillmentClaimers: wish.ID,
+		Fulfillers:          wish.ID,
 	}, nil
 }
 func (r *Resolver) user(ctx context.Context, id string) (*model.User, error) {

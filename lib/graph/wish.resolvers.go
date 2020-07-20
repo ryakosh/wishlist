@@ -5,7 +5,6 @@ package graph
 
 import (
 	"context"
-	"log"
 
 	"github.com/jinzhu/gorm"
 	"github.com/ryakosh/wishlist/lib"
@@ -16,8 +15,6 @@ import (
 )
 
 func (r *wishResolver) Owner(ctx context.Context, obj *model.Wish) (*model.User, error) {
-	log.Println(obj.Owner)
-
 	return r.user(ctx, obj.Owner)
 }
 
@@ -62,7 +59,7 @@ func (r *Resolver) wishUsers(ctx context.Context, wishID int, asso db.Associatio
 		return nil, err
 	}
 
-	d := r.DB.Select("id, owne").First(&wish, wishID)
+	d := r.DB.Select("id, owner").First(&wish, wishID)
 	if d.Error != nil && !gorm.IsRecordNotFoundError(d.Error) {
 		lib.LogError(lib.LPanic, "Could not read wish", d.Error)
 	} else if d.RecordNotFound() {
