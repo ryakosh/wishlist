@@ -139,7 +139,7 @@ func (r *mutationResolver) GenToken(ctx context.Context, input model.Login) (*mo
 	}, nil
 }
 
-func (r *mutationResolver) VerifyEmail(ctx context.Context, input model.VerificationCode) (bool, error) {
+func (r *mutationResolver) VerifyEmail(ctx context.Context, code string) (bool, error) {
 	var user dbmodel.User
 
 	c := lib.GinCtxFromCtx(ctx)
@@ -148,7 +148,7 @@ func (r *mutationResolver) VerifyEmail(ctx context.Context, input model.Verifica
 		return false, err
 	}
 
-	err = lib.Validator.Struct(&input)
+	err = lib.Validator.Var(code, "max=14")
 	if err != nil {
 		return false, lib.ErrValidationFailed
 	}
@@ -164,7 +164,7 @@ func (r *mutationResolver) VerifyEmail(ctx context.Context, input model.Verifica
 		return false, dbmodel.ErrEmailVerified
 	}
 
-	isMatch, err := dbmodel.VerifyCode(authedUser, input.Code)
+	isMatch, err := dbmodel.VerifyCode(authedUser, code)
 	if err != nil {
 		return false, err
 	}
@@ -179,7 +179,7 @@ func (r *mutationResolver) VerifyEmail(ctx context.Context, input model.Verifica
 	return true, nil
 }
 
-func (r *mutationResolver) RequestFriendship(ctx context.Context, userID string) (*model.User, error) {
+func (r *mutationResolver) SendFriendRequest(ctx context.Context, id string) (*model.User, error) {
 	var requestee dbmodel.User
 	var friendsCount uint8
 	var friendRequestsCount uint8
@@ -190,28 +190,28 @@ func (r *mutationResolver) RequestFriendship(ctx context.Context, userID string)
 		return nil, err
 	}
 
-	err = lib.Validator.Var(userID, "username,max=64")
+	err = lib.Validator.Var(id, "username,max=64")
 	if err != nil {
 		return nil, lib.ErrValidationFailed
 	}
 
-	if authedUser == userID {
+	if authedUser == id {
 		return nil, dbmodel.ErrUserNotFound
 	}
 
-	d := r.DB.Select("id, first_name, last_name").Where("id = ?", userID).First(&requestee)
+	d := r.DB.Select("id, first_name, last_name").Where("id = ?", id).First(&requestee)
 	if d.Error != nil && !gorm.IsRecordNotFoundError(d.Error) {
 		lib.LogError(lib.LPanic, "Could not read user", d.Error)
 	} else if d.RecordNotFound() {
 		return nil, dbmodel.ErrUserNotFound
 	}
 
-	d = r.DB.Table("friendrequests").Where("user_id = ? AND requester_id = ?", userID, authedUser).Count(&friendRequestsCount)
+	d = r.DB.Table("friendrequests").Where("user_id = ? AND requester_id = ?", id, authedUser).Count(&friendRequestsCount)
 	if d.Error != nil && !gorm.IsRecordNotFoundError(d.Error) {
 		lib.LogError(lib.LPanic, "Could not read user", d.Error)
 	}
 
-	d = r.DB.Table("friendships").Where("user_id = ? AND friend_id = ?", authedUser, userID).Count(&friendsCount)
+	d = r.DB.Table("friendships").Where("user_id = ? AND friend_id = ?", authedUser, id).Count(&friendsCount)
 	if d.Error != nil && !gorm.IsRecordNotFoundError(d.Error) {
 		lib.LogError(lib.LPanic, "Could not read user", d.Error)
 	}
@@ -220,7 +220,7 @@ func (r *mutationResolver) RequestFriendship(ctx context.Context, userID string)
 		return nil, dbmodel.ErrUserExists
 	}
 
-	err = r.DB.Model(&dbmodel.User{ID: userID}).Association("FriendRequests").Append(&dbmodel.User{ID: authedUser}).Error
+	err = r.DB.Model(&dbmodel.User{ID: id}).Association("FriendRequests").Append(&dbmodel.User{ID: authedUser}).Error
 	if err != nil {
 		lib.LogError(lib.LPanic, "Could not request friendship", err)
 	}
@@ -234,7 +234,7 @@ func (r *mutationResolver) RequestFriendship(ctx context.Context, userID string)
 	}, nil
 }
 
-func (r *mutationResolver) UnRequestFriendship(ctx context.Context, userID string) (*model.User, error) {
+func (r *mutationResolver) UnSendFriendRequest(ctx context.Context, id string) (*model.User, error) {
 	var requestees []dbmodel.User
 
 	c := lib.GinCtxFromCtx(ctx)
@@ -243,19 +243,19 @@ func (r *mutationResolver) UnRequestFriendship(ctx context.Context, userID strin
 		return nil, err
 	}
 
-	err = lib.Validator.Var(userID, "username,max=64")
+	err = lib.Validator.Var(id, "username,max=64")
 	if err != nil {
 		return nil, lib.ErrValidationFailed
 	}
 
-	err = r.DB.Model(&dbmodel.User{ID: userID}).Where("requester_id = ?", authedUser).Association("FriendRequests").Find(&requestees).Error
+	err = r.DB.Model(&dbmodel.User{ID: id}).Where("requester_id = ?", authedUser).Association("FriendRequests").Find(&requestees).Error
 	if gorm.IsRecordNotFoundError(err) {
 		return nil, dbmodel.ErrUserNotFound
 	} else if err != nil {
 		lib.LogError(lib.LPanic, "Could not delete friendship request", err)
 	}
 
-	err = r.DB.Model(&dbmodel.User{ID: userID}).Association("FriendRequests").Delete(&dbmodel.User{ID: authedUser}).Error
+	err = r.DB.Model(&dbmodel.User{ID: id}).Association("FriendRequests").Delete(&dbmodel.User{ID: authedUser}).Error
 	if err != nil {
 		lib.LogError(lib.LPanic, "Could not delete friendship request", err)
 	}
@@ -269,7 +269,7 @@ func (r *mutationResolver) UnRequestFriendship(ctx context.Context, userID strin
 	}, nil
 }
 
-func (r *mutationResolver) AcceptFriendRequest(ctx context.Context, userID string) (*model.User, error) {
+func (r *mutationResolver) AcceptFriendRequest(ctx context.Context, id string) (*model.User, error) {
 	var requestees []dbmodel.User
 
 	c := lib.GinCtxFromCtx(ctx)
@@ -278,13 +278,13 @@ func (r *mutationResolver) AcceptFriendRequest(ctx context.Context, userID strin
 		return nil, err
 	}
 
-	err = lib.Validator.Var(userID, "username,max=64")
+	err = lib.Validator.Var(id, "username,max=64")
 	if err != nil {
 		return nil, lib.ErrValidationFailed
 	}
 
 	d := r.DB.Model(&dbmodel.User{ID: authedUser}).Select("id").Where(
-		"requester_id = ?", userID).Related(&requestees, "FriendRequests")
+		"requester_id = ?", id).Related(&requestees, "FriendRequests")
 	if d.Error != nil && !gorm.IsRecordNotFoundError(d.Error) {
 		lib.LogError(lib.LPanic, "Could not read user's friend requests", d.Error)
 	}
@@ -325,7 +325,7 @@ func (r *mutationResolver) AcceptFriendRequest(ctx context.Context, userID strin
 	}, nil
 }
 
-func (r *mutationResolver) RejectFriendshipRequest(ctx context.Context, userID string) (*model.User, error) {
+func (r *mutationResolver) RejectFriendRequest(ctx context.Context, id string) (*model.User, error) {
 	var requestees []dbmodel.User
 
 	c := lib.GinCtxFromCtx(ctx)
@@ -334,13 +334,13 @@ func (r *mutationResolver) RejectFriendshipRequest(ctx context.Context, userID s
 		return nil, err
 	}
 
-	err = lib.Validator.Var(userID, "username,max=64")
+	err = lib.Validator.Var(id, "username,max=64")
 	if err != nil {
 		return nil, lib.ErrValidationFailed
 	}
 
 	d := r.DB.Model(&dbmodel.User{ID: authedUser}).Select("id").Where(
-		"requester_id = ?", userID).Related(&requestees, "FriendRequests")
+		"requester_id = ?", id).Related(&requestees, "FriendRequests")
 	if d.Error != nil && !gorm.IsRecordNotFoundError(d.Error) {
 		lib.LogError(lib.LPanic, "Could not read user's friend requests", d.Error)
 	}
@@ -442,7 +442,7 @@ func (r *mutationResolver) UpdateWish(ctx context.Context, input model.UpdateWis
 	}, nil
 }
 
-func (r *mutationResolver) DeleteWish(ctx context.Context, wishID int) (int, error) {
+func (r *mutationResolver) DeleteWish(ctx context.Context, id int) (int, error) {
 	var wish dbmodel.Wish
 
 	c := lib.GinCtxFromCtx(ctx)
@@ -451,12 +451,12 @@ func (r *mutationResolver) DeleteWish(ctx context.Context, wishID int) (int, err
 		return 0, err
 	}
 
-	err = lib.Validator.Var(wishID, "min=0")
+	err = lib.Validator.Var(id, "min=0")
 	if err != nil {
 		return 0, lib.ErrValidationFailed
 	}
 
-	d := r.DB.Select("id, user_id").First(&wish, wishID)
+	d := r.DB.Select("id, user_id").First(&wish, id)
 	if d.Error != nil && !gorm.IsRecordNotFoundError(d.Error) {
 		lib.LogError(lib.LPanic, "Could not read wish", d.Error)
 	} else if d.RecordNotFound() {
@@ -474,7 +474,7 @@ func (r *mutationResolver) DeleteWish(ctx context.Context, wishID int) (int, err
 	return wish.ID, nil
 }
 
-func (r *mutationResolver) AddWantToFulfill(ctx context.Context, wishID int) (*model.Wish, error) {
+func (r *mutationResolver) AddWantToFulfill(ctx context.Context, id int) (*model.Wish, error) {
 	var wish dbmodel.Wish
 
 	c := lib.GinCtxFromCtx(ctx)
@@ -483,12 +483,12 @@ func (r *mutationResolver) AddWantToFulfill(ctx context.Context, wishID int) (*m
 		return nil, err
 	}
 
-	err = lib.Validator.Var(wishID, "min=0")
+	err = lib.Validator.Var(id, "min=0")
 	if err != nil {
 		return nil, lib.ErrValidationFailed
 	}
 
-	d := r.DB.Select("id, name, user_id, description, link, image").First(&wish, wishID)
+	d := r.DB.Select("id, name, user_id, description, link, image").First(&wish, id)
 	if d.Error != nil && !gorm.IsRecordNotFoundError(d.Error) {
 		lib.LogError(lib.LPanic, "Could not read wish", d.Error)
 	} else if d.RecordNotFound() {
@@ -499,13 +499,13 @@ func (r *mutationResolver) AddWantToFulfill(ctx context.Context, wishID int) (*m
 		return nil, dbmodel.ErrUserNotAuthorized
 	}
 
-	asso := r.DB.Model(&dbmodel.Wish{ID: wishID}).Where("user_id = ?", authedUser).Association("WantToFulfill")
+	asso := r.DB.Model(&dbmodel.Wish{ID: id}).Where("user_id = ?", authedUser).Association("WantToFulfill")
 
 	if asso.Count() != 0 {
 		return nil, dbmodel.ErrUserExists
 	}
 
-	err = r.DB.Model(&dbmodel.Wish{ID: wishID}).Association("WantToFulfill").Append(&dbmodel.User{ID: authedUser}).Error
+	err = r.DB.Model(&dbmodel.Wish{ID: id}).Association("WantToFulfill").Append(&dbmodel.User{ID: authedUser}).Error
 	if err != nil {
 		lib.LogError(lib.LPanic, "Could not add to WantToFulfill", err)
 	}
@@ -520,34 +520,43 @@ func (r *mutationResolver) AddWantToFulfill(ctx context.Context, wishID int) (*m
 	}, nil
 }
 
-func (r *mutationResolver) AddClaimer(ctx context.Context, wishID int) (int, error) {
+func (r *mutationResolver) ClaimFulfillment(ctx context.Context, id int) (*model.Wish, error) {
+	var wish dbmodel.Wish
+
 	c := lib.GinCtxFromCtx(ctx)
 	authedUser, err := dbmodel.Authenticate(c)
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
 
-	err = lib.Validator.Var(wishID, "min=0")
+	err = lib.Validator.Var(id, "min=0")
 	if err != nil {
-		return 0, lib.ErrValidationFailed
+		return nil, lib.ErrValidationFailed
 	}
 
-	asso := r.DB.Model(&dbmodel.Wish{ID: wishID}).Where("user_id = ?", authedUser).Association("WantToFulfill")
+	d := r.DB.Select("id, name, user_id, description, link, image").First(&wish, id)
+	if d.Error != nil && !gorm.IsRecordNotFoundError(d.Error) {
+		lib.LogError(lib.LPanic, "Could not read wish", d.Error)
+	} else if d.RecordNotFound() {
+		return nil, dbmodel.ErrWishNotFound
+	}
+
+	asso := r.DB.Model(&dbmodel.Wish{ID: id}).Where("user_id = ?", authedUser).Association("WantToFulfill")
 	if asso.Error != nil && !gorm.IsRecordNotFoundError(asso.Error) {
 		lib.LogError(lib.LPanic, "Could not read wish's WantToFulfill", asso.Error)
 	}
 
 	if asso.Count() != 1 {
-		return 0, dbmodel.ErrUserNotFound
+		return nil, dbmodel.ErrUserNotFound
 	}
 
 	err = r.DB.Transaction(func(tx *gorm.DB) error {
-		asso := tx.Model(&dbmodel.Wish{ID: wishID}).Association("Claimers").Append(&dbmodel.User{ID: authedUser})
+		asso := tx.Model(&dbmodel.Wish{ID: id}).Association("Claimers").Append(&dbmodel.User{ID: authedUser})
 		if asso.Error != nil {
 			return asso.Error
 		}
 
-		asso = tx.Model(&dbmodel.Wish{ID: wishID}).Association("WantToFulfill").Delete(&dbmodel.User{ID: authedUser})
+		asso = tx.Model(&dbmodel.Wish{ID: id}).Association("WantToFulfill").Delete(&dbmodel.User{ID: authedUser})
 		if asso.Error != nil {
 			return asso.Error
 		}
@@ -558,26 +567,60 @@ func (r *mutationResolver) AddClaimer(ctx context.Context, wishID int) (int, err
 		lib.LogError(lib.LPanic, "Could not add to Claimers", err)
 	}
 
-	return wishID, nil
+	return &model.Wish{
+		ID:          wish.ID,
+		User:        wish.UserID,
+		Name:        wish.Name,
+		Description: wish.Description,
+		Link:        wish.Link,
+		Image:       wish.Image,
+	}, nil
 }
 
-func (r *mutationResolver) AcceptClaimer(ctx context.Context, wishID int, claimer string) (*model.Wish, error) {
+func (r *mutationResolver) AcceptFulfillmentClaim(ctx context.Context, input model.FulfillmentClaimer) (*model.Wish, error) {
+	err := lib.Validator.Struct(&input)
+	if err != nil {
+		return nil, lib.ErrValidationFailed
+	}
+
+	return r.handleClaimer(ctx, input.WishID, input.ClaimerID, dbmodel.WishFulFillersAsso)
+}
+
+func (r *mutationResolver) RejectFulfillmentClaim(ctx context.Context, input model.FulfillmentClaimer) (*model.Wish, error) {
+	err := lib.Validator.Struct(&input)
+	if err != nil {
+		return nil, lib.ErrValidationFailed
+	}
+
+	return r.handleClaimer(ctx, input.WishID, input.ClaimerID, dbmodel.WishWantToFulfillAsso)
+}
+
+func (r *queryResolver) User(ctx context.Context, id string) (*model.User, error) {
+	err := lib.Validator.Var(id, "username,max=64")
+	if err != nil {
+		return nil, lib.ErrValidationFailed
+	}
+
+	return r.user(ctx, id)
+}
+
+func (r *queryResolver) Wish(ctx context.Context, id int) (*model.Wish, error) {
+	err := lib.Validator.Var(id, "min=0")
+	if err != nil {
+		return nil, lib.ErrValidationFailed
+	}
+
+	return r.wish(ctx, id)
+}
+
+func (r *Resolver) handleClaimer(ctx context.Context, wishID int,
+	claimer string, appendTo db.Association) (*model.Wish, error) {
 	var wish dbmodel.Wish
 
 	c := lib.GinCtxFromCtx(ctx)
 	authedUser, err := dbmodel.Authenticate(c)
 	if err != nil {
 		return nil, err
-	}
-
-	err = lib.Validator.Var(wishID, "min=0")
-	if err != nil {
-		return nil, lib.ErrValidationFailed
-	}
-
-	err = lib.Validator.Var(claimer, "username,max=64")
-	if err != nil {
-		return nil, lib.ErrValidationFailed
 	}
 
 	d := r.DB.Select("id, name, user_id, description, link, image").First(&wish, wishID)
@@ -595,12 +638,12 @@ func (r *mutationResolver) AcceptClaimer(ctx context.Context, wishID int, claime
 	}
 
 	err = r.DB.Transaction(func(tx *gorm.DB) error {
-		asso := tx.Model(&wish).Association("Fulfillers").Append(&dbmodel.User{ID: claimer})
+		asso := tx.Model(&wish).Association(string(appendTo)).Append(&dbmodel.User{ID: claimer})
 		if asso.Error != nil {
 			return asso.Error
 		}
 
-		asso = tx.Model(&wish).Association("Claimers").Delete(&dbmodel.User{ID: claimer})
+		asso = tx.Model(&wish).Association(string(dbmodel.WishClaimersAsso)).Delete(&dbmodel.User{ID: claimer})
 		if asso.Error != nil {
 			return asso.Error
 		}
@@ -620,74 +663,8 @@ func (r *mutationResolver) AcceptClaimer(ctx context.Context, wishID int, claime
 		Image:       wish.Image,
 	}, nil
 }
-
-func (r *mutationResolver) RejectClaimer(ctx context.Context, wishID int, claimer string) (*model.Wish, error) {
-	var wish dbmodel.Wish
-
-	c := lib.GinCtxFromCtx(ctx)
-	authedUser, err := dbmodel.Authenticate(c)
-	if err != nil {
-		return nil, err
-	}
-
-	err = lib.Validator.Var(wishID, "min=0")
-	if err != nil {
-		return nil, lib.ErrValidationFailed
-	}
-
-	err = lib.Validator.Var(claimer, "username,max=64")
-	if err != nil {
-		return nil, lib.ErrValidationFailed
-	}
-
-	d := r.DB.Select("id, user_id").First(&wish, wishID)
-	if d.RecordNotFound() {
-		return nil, dbmodel.ErrWishNotFound
-	}
-
-	if authedUser != wish.UserID {
-		return nil, dbmodel.ErrUserNotAuthorized
-	}
-
-	count := r.DB.Model(&wish).Where("user_id = ?", claimer).Association("Claimers").Count()
-	if count != 1 {
-		return nil, dbmodel.ErrUserNotFound
-	}
-
-	err = r.DB.Transaction(func(tx *gorm.DB) error {
-		asso := tx.Model(&wish).Association("WantToFulfill").Append(&dbmodel.User{ID: claimer})
-		if asso.Error != nil {
-			return asso.Error
-		}
-
-		asso = tx.Model(&wish).Association("Claimers").Delete(&dbmodel.User{ID: claimer})
-		if asso.Error != nil {
-			return asso.Error
-		}
-
-		return nil
-	})
-	if err != nil {
-		lib.LogError(lib.LPanic, "Could not reject fulfillment claim", err)
-	}
-
-	return &model.Wish{
-		ID:          wish.ID,
-		User:        wish.UserID,
-		Name:        wish.Name,
-		Description: wish.Description,
-		Link:        wish.Link,
-		Image:       wish.Image,
-	}, nil
-}
-
-func (r *queryResolver) User(ctx context.Context, id string) (*model.User, error) {
+func (r *Resolver) user(ctx context.Context, id string) (*model.User, error) {
 	var user dbmodel.User
-
-	err := lib.Validator.Var(id, "username,max=64")
-	if err != nil {
-		return nil, lib.ErrValidationFailed
-	}
 
 	d := r.DB.Select("id, first_name, last_name").Where("id = ?", id).First(&user)
 	if d.Error != nil && !gorm.IsRecordNotFoundError(d.Error) {
@@ -704,16 +681,10 @@ func (r *queryResolver) User(ctx context.Context, id string) (*model.User, error
 		FriendRequests: user.ID,
 	}, nil
 }
-
-func (r *queryResolver) Wish(ctx context.Context, wishID int) (*model.Wish, error) {
+func (r *Resolver) wish(ctx context.Context, wishID int) (*model.Wish, error) {
 	var wish dbmodel.Wish
 
-	err := lib.Validator.Var(wishID, "min=0")
-	if err != nil {
-		return nil, lib.ErrValidationFailed
-	}
-
-	d := r.DB.Omit("fulfilled_by, created_at, updated_at").First(&wish, wishID)
+	d := r.DB.Omit("created_at, updated_at").First(&wish, wishID)
 	if d.Error != nil && !gorm.IsRecordNotFoundError(d.Error) {
 		lib.LogError(lib.LPanic, "Could not read wish", d.Error)
 	} else if d.RecordNotFound() {
@@ -731,231 +702,11 @@ func (r *queryResolver) Wish(ctx context.Context, wishID int) (*model.Wish, erro
 	}, nil
 }
 
-func (r *userResolver) Friends(ctx context.Context, obj *model.User, page int, limit int) ([]*model.User, error) {
-	var friends []dbmodel.User
-	var res []*model.User
-
-	c := lib.GinCtxFromCtx(ctx)
-	authedUser, err := dbmodel.Authenticate(c)
-	if err != nil {
-		return nil, err
-	}
-
-	if authedUser != obj.ID {
-		return nil, dbmodel.ErrUserNotAuthorized
-	}
-
-	err = lib.Validator.Struct(struct {
-		Page  int `validate:"min=1"`
-		Limit int `validate:"min=1,max=10"`
-	}{
-		Page:  page,
-		Limit: limit,
-	})
-	if err != nil {
-		return nil, lib.ErrValidationFailed
-	}
-
-	d := r.DB.Model(&dbmodel.User{ID: authedUser}).Select(
-		"id, first_name, last_name").Offset(
-		(page * limit) - limit).Limit(limit).Association("Friends").Find(&friends)
-	if d.Error != nil && !gorm.IsRecordNotFoundError(d.Error) {
-		lib.LogError(lib.LPanic, "Could not read user's friends", d.Error)
-	}
-
-	for _, f := range friends {
-		res = append(res, &model.User{
-			ID:             f.ID,
-			FirstName:      f.FirstName,
-			LastName:       f.LastName,
-			Friends:        f.ID,
-			FriendRequests: f.ID,
-		})
-	}
-
-	return res, nil
-}
-
-func (r *userResolver) FriendRequests(ctx context.Context, obj *model.User, page int, limit int) ([]*model.User, error) {
-	var reqs []dbmodel.User
-	var res []*model.User
-
-	c := lib.GinCtxFromCtx(ctx)
-	authedUser, err := dbmodel.Authenticate(c)
-	if err != nil {
-		return nil, err
-	}
-
-	if authedUser != obj.ID {
-		return nil, dbmodel.ErrUserNotAuthorized
-	}
-
-	err = lib.Validator.Struct(struct {
-		Page  int `validate:"min=1"`
-		Limit int `validate:"min=1,max=10"`
-	}{
-		Page:  page,
-		Limit: limit,
-	})
-	if err != nil {
-		return nil, lib.ErrValidationFailed
-	}
-
-	d := r.DB.Model(&dbmodel.User{ID: authedUser}).Select(
-		"id, first_name, last_name").Offset(
-		(page * limit) - limit).Limit(limit).Association("FriendRequests").Find(&reqs)
-	if d.Error != nil && !gorm.IsRecordNotFoundError(d.Error) {
-		lib.LogError(lib.LPanic, "Could not read user's friend requests", d.Error)
-	}
-
-	for _, r := range reqs {
-		res = append(res, &model.User{
-			ID:             r.ID,
-			FirstName:      r.FirstName,
-			LastName:       r.LastName,
-			Friends:        r.ID,
-			FriendRequests: r.ID,
-		})
-	}
-
-	return res, nil
-}
-
-func (r *wishResolver) User(ctx context.Context, obj *model.Wish) (*model.User, error) {
-	var user dbmodel.User
-
-	err := lib.Validator.Var(obj.User, "username,max=64")
-	if err != nil {
-		return nil, lib.ErrValidationFailed
-	}
-
-	d := r.DB.Select("id, first_name, last_name").Where("id = ?", obj.User).First(&user)
-	if d.Error != nil && !gorm.IsRecordNotFoundError(d.Error) {
-		lib.LogError(lib.LPanic, "Could not read user", d.Error)
-	} else if d.RecordNotFound() {
-		return nil, dbmodel.ErrUserNotFound
-	}
-
-	return &model.User{
-		ID:             user.ID,
-		FirstName:      user.FirstName,
-		LastName:       user.LastName,
-		Friends:        user.ID,
-		FriendRequests: user.ID,
-	}, nil
-}
-
-func (r *wishResolver) Claimers(ctx context.Context, obj *model.Wish, page int, limit int) ([]*model.User, error) {
-	var wish dbmodel.Wish
-	var claimers []dbmodel.User
-	var res []*model.User
-
-	c := lib.GinCtxFromCtx(ctx)
-	authedUser, err := dbmodel.Authenticate(c)
-	if err != nil {
-		return nil, err
-	}
-
-	err = lib.Validator.Struct(struct {
-		Page  int `validate:"min=1"`
-		Limit int `validate:"min=1,max=10"`
-	}{
-		Page:  page,
-		Limit: limit,
-	})
-	if err != nil {
-		return nil, lib.ErrValidationFailed
-	}
-
-	d := r.DB.Select("id user_id").First(&wish, obj.Claimers)
-	if d.Error != nil && !gorm.IsRecordNotFoundError(d.Error) {
-		lib.LogError(lib.LPanic, "Could not read wish", d.Error)
-	} else if d.RecordNotFound() {
-		return nil, dbmodel.ErrWishNotFound
-	}
-
-	if authedUser != wish.UserID {
-		return nil, dbmodel.ErrUserNotAuthorized
-	}
-
-	r.DB.Model(&dbmodel.Wish{ID: obj.Claimers}).Offset(
-		(page * limit) - limit).Limit(limit).Association("Claimers").Find(&claimers)
-
-	for _, c := range claimers {
-		res = append(res, &model.User{
-			ID:             c.ID,
-			FirstName:      c.FirstName,
-			LastName:       c.LastName,
-			Friends:        c.ID,
-			FriendRequests: c.ID,
-		})
-	}
-
-	return res, nil
-}
-
-func (r *wishResolver) Fulfillers(ctx context.Context, obj *model.Wish, page int, limit int) ([]*model.User, error) {
-	var wish dbmodel.Wish
-	var fulfillers []dbmodel.User
-	var res []*model.User
-
-	c := lib.GinCtxFromCtx(ctx)
-	authedUser, err := dbmodel.Authenticate(c)
-	if err != nil {
-		return nil, err
-	}
-
-	err = lib.Validator.Struct(struct {
-		Page  int `validate:"min=1"`
-		Limit int `validate:"min=1,max=10"`
-	}{
-		Page:  page,
-		Limit: limit,
-	})
-	if err != nil {
-		return nil, lib.ErrValidationFailed
-	}
-
-	d := r.DB.Select("id, user_id").First(&wish, obj.Fulfillers)
-	if d.Error != nil && !gorm.IsRecordNotFoundError(d.Error) {
-		lib.LogError(lib.LPanic, "Could not read wish", d.Error)
-	} else if d.RecordNotFound() {
-		return nil, dbmodel.ErrWishNotFound
-	}
-
-	if authedUser != wish.UserID {
-		return nil, dbmodel.ErrUserNotAuthorized
-	}
-
-	r.DB.Model(&dbmodel.Wish{ID: obj.Fulfillers}).Offset(
-		(page * limit) - limit).Limit(limit).Association("Fulfillers").Find(&fulfillers)
-
-	for _, f := range fulfillers {
-		res = append(res, &model.User{
-			ID:             f.ID,
-			FirstName:      f.FirstName,
-			LastName:       f.LastName,
-			Friends:        f.ID,
-			FriendRequests: f.ID,
-		})
-	}
-
-	return res, nil
-}
-
 // Mutation returns generated.MutationResolver implementation.
 func (r *Resolver) Mutation() generated.MutationResolver { return &mutationResolver{r} }
 
 // Query returns generated.QueryResolver implementation.
 func (r *Resolver) Query() generated.QueryResolver { return &queryResolver{r} }
 
-// User returns generated.UserResolver implementation.
-func (r *Resolver) User() generated.UserResolver { return &userResolver{r} }
-
-// Wish returns generated.WishResolver implementation.
-func (r *Resolver) Wish() generated.WishResolver { return &wishResolver{r} }
-
 type mutationResolver struct{ *Resolver }
 type queryResolver struct{ *Resolver }
-type userResolver struct{ *Resolver }
-type wishResolver struct{ *Resolver }

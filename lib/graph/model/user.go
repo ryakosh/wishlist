@@ -25,7 +25,3 @@ type Login struct {
 	ID       string `json:"id" validate:"username,max=64"`
 	Password string `json:"password" validate:"min=8,max=256"`
 }
-
-type VerificationCode struct {
-	Code string `json:"code" validate:"max=14"`
-}

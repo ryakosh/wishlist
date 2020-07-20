@@ -1,66 +1,6 @@
-type User {
-  id: String!
-  firstName: String
-  lastName: String
-  friends(page: Int! =  1, limit: Int! = 10 ): [User!]!
-  friendRequests(page: Int! = 1, limit: Int! = 10): [User!]!
-}
-
-type Token {
-  token: String!
-}
-
-input NewUser {
-  id: String!
-  firstName: String
-  lastName: String
-  email: String!
-  password: String!
-}
-
-input UpdateUser {
-  firstName: String
-  lastName: String
-}
-
-input Login {
-  id: String!
-  password: String!
-}
-
-input VerificationCode {
-  code: String!
-}
-
-type Wish {
-  id: Int!
-  user: User!
-  name: String!
-  description: String!
-  link: String!
-  image: String!
-  claimers(page: Int! =  1, limit: Int! = 10 ): [User!]!
-  fulfillers(page: Int! =  1, limit: Int! = 10 ): [User!]!
-}
-
-input NewWish {
-  name: String!
-  description: String
-  link: String
-  image: String
-}
-
-input UpdateWish {
-  id: Int!
-  name: String
-  description: String
-  link: String
-  image: String
-}
-
 type Query {
   user(id: String!): User!
-  wish(wishId: Int!): Wish!
+  wish(id: Int!): Wish!
 }
 
 type Mutation {
@@ -68,17 +8,17 @@ type Mutation {
   updateUser(input: UpdateUser!): User!
   deleteUser: String!
   genToken(input: Login!): Token!
-  verifyEmail(input: VerificationCode!): Boolean!
-  requestFriendship(userId: String!): User!
-  unRequestFriendship(userId: String!): User!
-  acceptFriendRequest(userId: String!): User!
-  rejectFriendshipRequest(UserId: String!): User!
+  verifyEmail(code: String!): Boolean!
+  sendFriendRequest(id: String!): User!
+  unSendFriendRequest(id: String!): User!
+  acceptFriendRequest(id: String!): User!
+  rejectFriendRequest(id: String!): User!
 
   createWish(input: NewWish!): Wish!
   updateWish(input: UpdateWish!): Wish!
-  deleteWish(wishId: Int!): Int!
-  addWantToFulfill(wishId: Int!): Wish!
-  addClaimer(wishId: Int!): Int!
-  acceptClaimer(wishId: Int!, claimer: String!): Wish!
-  rejectClaimer(wishId: Int!, claimer: String!): Wish!
+  deleteWish(id: Int!): Int!
+  addWantToFulfill(id: Int!): Wish!
+  claimFulfillment(id: Int!): Wish!
+  acceptFulfillmentClaim(input: FulfillmentClaimer!): Wish!
+  rejectFulfillmentClaim(input: FulfillmentClaimer!): Wish!
 }

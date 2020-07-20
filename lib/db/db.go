@@ -8,6 +8,8 @@ import (
 	"github.com/ryakosh/wishlist/lib"
 )
 
+type Association string
+
 var (
 	dbEnv string
 

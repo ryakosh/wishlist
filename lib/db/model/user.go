@@ -18,6 +18,13 @@ const (
 	authedUserKey = "AuthedUserKey"
 )
 
+const (
+	UserWishesAsso         db.Association = "Wishes"
+	UserCodeAsso           db.Association = "Code"
+	UserFriendsAsso        db.Association = "Friends"
+	UserFriendRequestsAsso db.Association = "FriendRequests"
+)
+
 var (
 	// ErrUserExists is returned when User already exists in the database
 	ErrUserExists = errors.New("User already exists")

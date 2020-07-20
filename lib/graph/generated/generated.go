@@ -46,27 +46,27 @@ type DirectiveRoot struct {
 
 type ComplexityRoot struct {
 	Mutation struct {
-		AcceptClaimer           func(childComplexity int, wishID int, claimer string) int
-		AcceptFriendRequest     func(childComplexity int, userID string) int
-		AddClaimer              func(childComplexity int, wishID int) int
-		AddWantToFulfill        func(childComplexity int, wishID int) int
-		CreateUser              func(childComplexity int, input model.NewUser) int
-		CreateWish              func(childComplexity int, input model.NewWish) int
-		DeleteUser              func(childComplexity int) int
-		DeleteWish              func(childComplexity int, wishID int) int
-		GenToken                func(childComplexity int, input model.Login) int
-		RejectClaimer           func(childComplexity int, wishID int, claimer string) int
-		RejectFriendshipRequest func(childComplexity int, userID string) int
-		RequestFriendship       func(childComplexity int, userID string) int
-		UnRequestFriendship     func(childComplexity int, userID string) int
-		UpdateUser              func(childComplexity int, input model.UpdateUser) int
-		UpdateWish              func(childComplexity int, input model.UpdateWish) int
-		VerifyEmail             func(childComplexity int, input model.VerificationCode) int
+		AcceptFriendRequest    func(childComplexity int, id string) int
+		AcceptFulfillmentClaim func(childComplexity int, input model.FulfillmentClaimer) int
+		AddWantToFulfill       func(childComplexity int, id int) int
+		ClaimFulfillment       func(childComplexity int, id int) int
+		CreateUser             func(childComplexity int, input model.NewUser) int
+		CreateWish             func(childComplexity int, input model.NewWish) int
+		DeleteUser             func(childComplexity int) int
+		DeleteWish             func(childComplexity int, id int) int
+		GenToken               func(childComplexity int, input model.Login) int
+		RejectFriendRequest    func(childComplexity int, id string) int
+		RejectFulfillmentClaim func(childComplexity int, input model.FulfillmentClaimer) int
+		SendFriendRequest      func(childComplexity int, id string) int
+		UnSendFriendRequest    func(childComplexity int, id string) int
+		UpdateUser             func(childComplexity int, input model.UpdateUser) int
+		UpdateWish             func(childComplexity int, input model.UpdateWish) int
+		VerifyEmail            func(childComplexity int, code string) int
 	}
 
 	Query struct {
 		User func(childComplexity int, id string) int
-		Wish func(childComplexity int, wishID int) int
+		Wish func(childComplexity int, id int) int
 	}
 
 	Token struct {
@@ -98,22 +98,22 @@ type MutationResolver interface {
 	UpdateUser(ctx context.Context, input model.UpdateUser) (*model.User, error)
 	DeleteUser(ctx context.Context) (string, error)
 	GenToken(ctx context.Context, input model.Login) (*model.Token, error)
-	VerifyEmail(ctx context.Context, input model.VerificationCode) (bool, error)
-	RequestFriendship(ctx context.Context, userID string) (*model.User, error)
-	UnRequestFriendship(ctx context.Context, userID string) (*model.User, error)
-	AcceptFriendRequest(ctx context.Context, userID string) (*model.User, error)
-	RejectFriendshipRequest(ctx context.Context, userID string) (*model.User, error)
+	VerifyEmail(ctx context.Context, code string) (bool, error)
+	SendFriendRequest(ctx context.Context, id string) (*model.User, error)
+	UnSendFriendRequest(ctx context.Context, id string) (*model.User, error)
+	AcceptFriendRequest(ctx context.Context, id string) (*model.User, error)
+	RejectFriendRequest(ctx context.Context, id string) (*model.User, error)
 	CreateWish(ctx context.Context, input model.NewWish) (*model.Wish, error)
 	UpdateWish(ctx context.Context, input model.UpdateWish) (*model.Wish, error)
-	DeleteWish(ctx context.Context, wishID int) (int, error)
-	AddWantToFulfill(ctx context.Context, wishID int) (*model.Wish, error)
-	AddClaimer(ctx context.Context, wishID int) (int, error)
-	AcceptClaimer(ctx context.Context, wishID int, claimer string) (*model.Wish, error)
-	RejectClaimer(ctx context.Context, wishID int, claimer string) (*model.Wish, error)
+	DeleteWish(ctx context.Context, id int) (int, error)
+	AddWantToFulfill(ctx context.Context, id int) (*model.Wish, error)
+	ClaimFulfillment(ctx context.Context, id int) (*model.Wish, error)
+	AcceptFulfillmentClaim(ctx context.Context, input model.FulfillmentClaimer) (*model.Wish, error)
+	RejectFulfillmentClaim(ctx context.Context, input model.FulfillmentClaimer) (*model.Wish, error)
 }
 type QueryResolver interface {
 	User(ctx context.Context, id string) (*model.User, error)
-	Wish(ctx context.Context, wishID int) (*model.Wish, error)
+	Wish(ctx context.Context, id int) (*model.Wish, error)
 }
 type UserResolver interface {
 	Friends(ctx context.Context, obj *model.User, page int, limit int) ([]*model.User, error)
@@ -141,18 +141,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 	_ = ec
 	switch typeName + "." + field {
 
-	case "Mutation.acceptClaimer":
-		if e.complexity.Mutation.AcceptClaimer == nil {
-			break
-		}
-
-		args, err := ec.field_Mutation_acceptClaimer_args(context.TODO(), rawArgs)
-		if err != nil {
-			return 0, false
-		}
-
-		return e.complexity.Mutation.AcceptClaimer(childComplexity, args["wishId"].(int), args["claimer"].(string)), true
-
 	case "Mutation.acceptFriendRequest":
 		if e.complexity.Mutation.AcceptFriendRequest == nil {
 			break
@@ -163,19 +151,19 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Mutation.AcceptFriendRequest(childComplexity, args["userId"].(string)), true
+		return e.complexity.Mutation.AcceptFriendRequest(childComplexity, args["id"].(string)), true
 
-	case "Mutation.addClaimer":
-		if e.complexity.Mutation.AddClaimer == nil {
+	case "Mutation.acceptFulfillmentClaim":
+		if e.complexity.Mutation.AcceptFulfillmentClaim == nil {
 			break
 		}
 
-		args, err := ec.field_Mutation_addClaimer_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_acceptFulfillmentClaim_args(context.TODO(), rawArgs)
 		if err != nil {
 			return 0, false
 		}
 
-		return e.complexity.Mutation.AddClaimer(childComplexity, args["wishId"].(int)), true
+		return e.complexity.Mutation.AcceptFulfillmentClaim(childComplexity, args["input"].(model.FulfillmentClaimer)), true
 
 	case "Mutation.addWantToFulfill":
 		if e.complexity.Mutation.AddWantToFulfill == nil {
@@ -187,7 +175,19 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Mutation.AddWantToFulfill(childComplexity, args["wishId"].(int)), true
+		return e.complexity.Mutation.AddWantToFulfill(childComplexity, args["id"].(int)), true
+
+	case "Mutation.claimFulfillment":
+		if e.complexity.Mutation.ClaimFulfillment == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_claimFulfillment_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.ClaimFulfillment(childComplexity, args["id"].(int)), true
 
 	case "Mutation.createUser":
 		if e.complexity.Mutation.CreateUser == nil {
@@ -230,7 +230,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Mutation.DeleteWish(childComplexity, args["wishId"].(int)), true
+		return e.complexity.Mutation.DeleteWish(childComplexity, args["id"].(int)), true
 
 	case "Mutation.genToken":
 		if e.complexity.Mutation.GenToken == nil {
@@ -244,53 +244,53 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Mutation.GenToken(childComplexity, args["input"].(model.Login)), true
 
-	case "Mutation.rejectClaimer":
-		if e.complexity.Mutation.RejectClaimer == nil {
+	case "Mutation.rejectFriendRequest":
+		if e.complexity.Mutation.RejectFriendRequest == nil {
 			break
 		}
 
-		args, err := ec.field_Mutation_rejectClaimer_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_rejectFriendRequest_args(context.TODO(), rawArgs)
 		if err != nil {
 			return 0, false
 		}
 
-		return e.complexity.Mutation.RejectClaimer(childComplexity, args["wishId"].(int), args["claimer"].(string)), true
+		return e.complexity.Mutation.RejectFriendRequest(childComplexity, args["id"].(string)), true
 
-	case "Mutation.rejectFriendshipRequest":
-		if e.complexity.Mutation.RejectFriendshipRequest == nil {
+	case "Mutation.rejectFulfillmentClaim":
+		if e.complexity.Mutation.RejectFulfillmentClaim == nil {
 			break
 		}
 
-		args, err := ec.field_Mutation_rejectFriendshipRequest_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_rejectFulfillmentClaim_args(context.TODO(), rawArgs)
 		if err != nil {
 			return 0, false
 		}
 
-		return e.complexity.Mutation.RejectFriendshipRequest(childComplexity, args["UserId"].(string)), true
+		return e.complexity.Mutation.RejectFulfillmentClaim(childComplexity, args["input"].(model.FulfillmentClaimer)), true
 
-	case "Mutation.requestFriendship":
-		if e.complexity.Mutation.RequestFriendship == nil {
+	case "Mutation.sendFriendRequest":
+		if e.complexity.Mutation.SendFriendRequest == nil {
 			break
 		}
 
-		args, err := ec.field_Mutation_requestFriendship_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_sendFriendRequest_args(context.TODO(), rawArgs)
 		if err != nil {
 			return 0, false
 		}
 
-		return e.complexity.Mutation.RequestFriendship(childComplexity, args["userId"].(string)), true
+		return e.complexity.Mutation.SendFriendRequest(childComplexity, args["id"].(string)), true
 
-	case "Mutation.unRequestFriendship":
-		if e.complexity.Mutation.UnRequestFriendship == nil {
+	case "Mutation.unSendFriendRequest":
+		if e.complexity.Mutation.UnSendFriendRequest == nil {
 			break
 		}
 
-		args, err := ec.field_Mutation_unRequestFriendship_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_unSendFriendRequest_args(context.TODO(), rawArgs)
 		if err != nil {
 			return 0, false
 		}
 
-		return e.complexity.Mutation.UnRequestFriendship(childComplexity, args["userId"].(string)), true
+		return e.complexity.Mutation.UnSendFriendRequest(childComplexity, args["id"].(string)), true
 
 	case "Mutation.updateUser":
 		if e.complexity.Mutation.UpdateUser == nil {
@@ -326,7 +326,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Mutation.VerifyEmail(childComplexity, args["input"].(model.VerificationCode)), true
+		return e.complexity.Mutation.VerifyEmail(childComplexity, args["code"].(string)), true
 
 	case "Query.user":
 		if e.complexity.Query.User == nil {
@@ -350,7 +350,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Query.Wish(childComplexity, args["wishId"].(int)), true
+		return e.complexity.Query.Wish(childComplexity, args["id"].(int)), true
 
 	case "Token.token":
 		if e.complexity.Token.Token == nil {
@@ -534,7 +534,31 @@ func (ec *executionContext) introspectType(name string) (*introspection.Type, er
 }
 
 var sources = []*ast.Source{
-	&ast.Source{Name: "lib/graph/schema.graphqls", Input: `type User {
+	&ast.Source{Name: "lib/graph/schema.graphqls", Input: `type Query {
+  user(id: String!): User!
+  wish(id: Int!): Wish!
+}
+
+type Mutation {
+  createUser(input: NewUser!): User!
+  updateUser(input: UpdateUser!): User!
+  deleteUser: String!
+  genToken(input: Login!): Token!
+  verifyEmail(code: String!): Boolean!
+  sendFriendRequest(id: String!): User!
+  unSendFriendRequest(id: String!): User!
+  acceptFriendRequest(id: String!): User!
+  rejectFriendRequest(id: String!): User!
+
+  createWish(input: NewWish!): Wish!
+  updateWish(input: UpdateWish!): Wish!
+  deleteWish(id: Int!): Int!
+  addWantToFulfill(id: Int!): Wish!
+  claimFulfillment(id: Int!): Wish!
+  acceptFulfillmentClaim(input: FulfillmentClaimer!): Wish!
+  rejectFulfillmentClaim(input: FulfillmentClaimer!): Wish!
+}`, BuiltIn: false},
+	&ast.Source{Name: "lib/graph/user.graphqls", Input: `type User {
   id: String!
   firstName: String
   lastName: String
@@ -562,13 +586,8 @@ input UpdateUser {
 input Login {
   id: String!
   password: String!
-}
-
-input VerificationCode {
-  code: String!
-}
-
-type Wish {
+}`, BuiltIn: false},
+	&ast.Source{Name: "lib/graph/wish.graphqls", Input: `type Wish {
   id: Int!
   user: User!
   name: String!
@@ -594,30 +613,11 @@ input UpdateWish {
   image: String
 }
 
-type Query {
-  user(id: String!): User!
-  wish(wishId: Int!): Wish!
+input FulfillmentClaimer {
+    wishId: Int!
+    claimerId: String!
 }
-
-type Mutation {
-  createUser(input: NewUser!): User!
-  updateUser(input: UpdateUser!): User!
-  deleteUser: String!
-  genToken(input: Login!): Token!
-  verifyEmail(input: VerificationCode!): Boolean!
-  requestFriendship(userId: String!): User!
-  unRequestFriendship(userId: String!): User!
-  acceptFriendRequest(userId: String!): User!
-  rejectFriendshipRequest(UserId: String!): User!
-
-  createWish(input: NewWish!): Wish!
-  updateWish(input: UpdateWish!): Wish!
-  deleteWish(wishId: Int!): Int!
-  addWantToFulfill(wishId: Int!): Wish!
-  addClaimer(wishId: Int!): Int!
-  acceptClaimer(wishId: Int!, claimer: String!): Wish!
-  rejectClaimer(wishId: Int!, claimer: String!): Wish!
-}`, BuiltIn: false},
+`, BuiltIn: false},
 }
 var parsedSchema = gqlparser.MustLoadSchema(sources...)
 
@@ -625,53 +625,31 @@ var parsedSchema = gqlparser.MustLoadSchema(sources...)
 
 // region    ***************************** args.gotpl *****************************
 
-func (ec *executionContext) field_Mutation_acceptClaimer_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
-	var err error
-	args := map[string]interface{}{}
-	var arg0 int
-	if tmp, ok := rawArgs["wishId"]; ok {
-		arg0, err = ec.unmarshalNInt2int(ctx, tmp)
-		if err != nil {
-			return nil, err
-		}
-	}
-	args["wishId"] = arg0
-	var arg1 string
-	if tmp, ok := rawArgs["claimer"]; ok {
-		arg1, err = ec.unmarshalNString2string(ctx, tmp)
-		if err != nil {
-			return nil, err
-		}
-	}
-	args["claimer"] = arg1
-	return args, nil
-}
-
 func (ec *executionContext) field_Mutation_acceptFriendRequest_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
 	var arg0 string
-	if tmp, ok := rawArgs["userId"]; ok {
+	if tmp, ok := rawArgs["id"]; ok {
 		arg0, err = ec.unmarshalNString2string(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
-	args["userId"] = arg0
+	args["id"] = arg0
 	return args, nil
 }
 
-func (ec *executionContext) field_Mutation_addClaimer_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+func (ec *executionContext) field_Mutation_acceptFulfillmentClaim_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
-	var arg0 int
-	if tmp, ok := rawArgs["wishId"]; ok {
-		arg0, err = ec.unmarshalNInt2int(ctx, tmp)
+	var arg0 model.FulfillmentClaimer
+	if tmp, ok := rawArgs["input"]; ok {
+		arg0, err = ec.unmarshalNFulfillmentClaimer2githubᚗcomᚋryakoshᚋwishlistᚋlibᚋgraphᚋmodelᚐFulfillmentClaimer(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
-	args["wishId"] = arg0
+	args["input"] = arg0
 	return args, nil
 }
 
@@ -679,13 +657,27 @@ func (ec *executionContext) field_Mutation_addWantToFulfill_args(ctx context.Con
 	var err error
 	args := map[string]interface{}{}
 	var arg0 int
-	if tmp, ok := rawArgs["wishId"]; ok {
+	if tmp, ok := rawArgs["id"]; ok {
 		arg0, err = ec.unmarshalNInt2int(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
-	args["wishId"] = arg0
+	args["id"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_claimFulfillment_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 int
+	if tmp, ok := rawArgs["id"]; ok {
+		arg0, err = ec.unmarshalNInt2int(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["id"] = arg0
 	return args, nil
 }
 
@@ -721,13 +713,13 @@ func (ec *executionContext) field_Mutation_deleteWish_args(ctx context.Context, 
 	var err error
 	args := map[string]interface{}{}
 	var arg0 int
-	if tmp, ok := rawArgs["wishId"]; ok {
+	if tmp, ok := rawArgs["id"]; ok {
 		arg0, err = ec.unmarshalNInt2int(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
-	args["wishId"] = arg0
+	args["id"] = arg0
 	return args, nil
 }
 
@@ -745,67 +737,59 @@ func (ec *executionContext) field_Mutation_genToken_args(ctx context.Context, ra
 	return args, nil
 }
 
-func (ec *executionContext) field_Mutation_rejectClaimer_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
-	var err error
-	args := map[string]interface{}{}
-	var arg0 int
-	if tmp, ok := rawArgs["wishId"]; ok {
-		arg0, err = ec.unmarshalNInt2int(ctx, tmp)
-		if err != nil {
-			return nil, err
-		}
-	}
-	args["wishId"] = arg0
-	var arg1 string
-	if tmp, ok := rawArgs["claimer"]; ok {
-		arg1, err = ec.unmarshalNString2string(ctx, tmp)
-		if err != nil {
-			return nil, err
-		}
-	}
-	args["claimer"] = arg1
-	return args, nil
-}
-
-func (ec *executionContext) field_Mutation_rejectFriendshipRequest_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+func (ec *executionContext) field_Mutation_rejectFriendRequest_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
 	var arg0 string
-	if tmp, ok := rawArgs["UserId"]; ok {
+	if tmp, ok := rawArgs["id"]; ok {
 		arg0, err = ec.unmarshalNString2string(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
-	args["UserId"] = arg0
+	args["id"] = arg0
 	return args, nil
 }
 
-func (ec *executionContext) field_Mutation_requestFriendship_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+func (ec *executionContext) field_Mutation_rejectFulfillmentClaim_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 model.FulfillmentClaimer
+	if tmp, ok := rawArgs["input"]; ok {
+		arg0, err = ec.unmarshalNFulfillmentClaimer2githubᚗcomᚋryakoshᚋwishlistᚋlibᚋgraphᚋmodelᚐFulfillmentClaimer(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["input"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_sendFriendRequest_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
 	var arg0 string
-	if tmp, ok := rawArgs["userId"]; ok {
+	if tmp, ok := rawArgs["id"]; ok {
 		arg0, err = ec.unmarshalNString2string(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
-	args["userId"] = arg0
+	args["id"] = arg0
 	return args, nil
 }
 
-func (ec *executionContext) field_Mutation_unRequestFriendship_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+func (ec *executionContext) field_Mutation_unSendFriendRequest_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
 	var arg0 string
-	if tmp, ok := rawArgs["userId"]; ok {
+	if tmp, ok := rawArgs["id"]; ok {
 		arg0, err = ec.unmarshalNString2string(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
-	args["userId"] = arg0
+	args["id"] = arg0
 	return args, nil
 }
 
@@ -840,14 +824,14 @@ func (ec *executionContext) field_Mutation_updateWish_args(ctx context.Context, 
 func (ec *executionContext) field_Mutation_verifyEmail_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
-	var arg0 model.VerificationCode
-	if tmp, ok := rawArgs["input"]; ok {
-		arg0, err = ec.unmarshalNVerificationCode2githubᚗcomᚋryakoshᚋwishlistᚋlibᚋgraphᚋmodelᚐVerificationCode(ctx, tmp)
+	var arg0 string
+	if tmp, ok := rawArgs["code"]; ok {
+		arg0, err = ec.unmarshalNString2string(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
-	args["input"] = arg0
+	args["code"] = arg0
 	return args, nil
 }
 
@@ -883,13 +867,13 @@ func (ec *executionContext) field_Query_wish_args(ctx context.Context, rawArgs m
 	var err error
 	args := map[string]interface{}{}
 	var arg0 int
-	if tmp, ok := rawArgs["wishId"]; ok {
+	if tmp, ok := rawArgs["id"]; ok {
 		arg0, err = ec.unmarshalNInt2int(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
-	args["wishId"] = arg0
+	args["id"] = arg0
 	return args, nil
 }
 
@@ -1198,7 +1182,7 @@ func (ec *executionContext) _Mutation_verifyEmail(ctx context.Context, field gra
 	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().VerifyEmail(rctx, args["input"].(model.VerificationCode))
+		return ec.resolvers.Mutation().VerifyEmail(rctx, args["code"].(string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -1215,7 +1199,7 @@ func (ec *executionContext) _Mutation_verifyEmail(ctx context.Context, field gra
 	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _Mutation_requestFriendship(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+func (ec *executionContext) _Mutation_sendFriendRequest(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -1231,7 +1215,7 @@ func (ec *executionContext) _Mutation_requestFriendship(ctx context.Context, fie
 
 	ctx = graphql.WithFieldContext(ctx, fc)
 	rawArgs := field.ArgumentMap(ec.Variables)
-	args, err := ec.field_Mutation_requestFriendship_args(ctx, rawArgs)
+	args, err := ec.field_Mutation_sendFriendRequest_args(ctx, rawArgs)
 	if err != nil {
 		ec.Error(ctx, err)
 		return graphql.Null
@@ -1239,7 +1223,7 @@ func (ec *executionContext) _Mutation_requestFriendship(ctx context.Context, fie
 	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().RequestFriendship(rctx, args["userId"].(string))
+		return ec.resolvers.Mutation().SendFriendRequest(rctx, args["id"].(string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -1256,7 +1240,7 @@ func (ec *executionContext) _Mutation_requestFriendship(ctx context.Context, fie
 	return ec.marshalNUser2ᚖgithubᚗcomᚋryakoshᚋwishlistᚋlibᚋgraphᚋmodelᚐUser(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _Mutation_unRequestFriendship(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+func (ec *executionContext) _Mutation_unSendFriendRequest(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -1272,7 +1256,7 @@ func (ec *executionContext) _Mutation_unRequestFriendship(ctx context.Context, f
 
 	ctx = graphql.WithFieldContext(ctx, fc)
 	rawArgs := field.ArgumentMap(ec.Variables)
-	args, err := ec.field_Mutation_unRequestFriendship_args(ctx, rawArgs)
+	args, err := ec.field_Mutation_unSendFriendRequest_args(ctx, rawArgs)
 	if err != nil {
 		ec.Error(ctx, err)
 		return graphql.Null
@@ -1280,7 +1264,7 @@ func (ec *executionContext) _Mutation_unRequestFriendship(ctx context.Context, f
 	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().UnRequestFriendship(rctx, args["userId"].(string))
+		return ec.resolvers.Mutation().UnSendFriendRequest(rctx, args["id"].(string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -1321,7 +1305,7 @@ func (ec *executionContext) _Mutation_acceptFriendRequest(ctx context.Context, f
 	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().AcceptFriendRequest(rctx, args["userId"].(string))
+		return ec.resolvers.Mutation().AcceptFriendRequest(rctx, args["id"].(string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -1338,7 +1322,7 @@ func (ec *executionContext) _Mutation_acceptFriendRequest(ctx context.Context, f
 	return ec.marshalNUser2ᚖgithubᚗcomᚋryakoshᚋwishlistᚋlibᚋgraphᚋmodelᚐUser(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _Mutation_rejectFriendshipRequest(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+func (ec *executionContext) _Mutation_rejectFriendRequest(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -1354,7 +1338,7 @@ func (ec *executionContext) _Mutation_rejectFriendshipRequest(ctx context.Contex
 
 	ctx = graphql.WithFieldContext(ctx, fc)
 	rawArgs := field.ArgumentMap(ec.Variables)
-	args, err := ec.field_Mutation_rejectFriendshipRequest_args(ctx, rawArgs)
+	args, err := ec.field_Mutation_rejectFriendRequest_args(ctx, rawArgs)
 	if err != nil {
 		ec.Error(ctx, err)
 		return graphql.Null
@@ -1362,7 +1346,7 @@ func (ec *executionContext) _Mutation_rejectFriendshipRequest(ctx context.Contex
 	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().RejectFriendshipRequest(rctx, args["UserId"].(string))
+		return ec.resolvers.Mutation().RejectFriendRequest(rctx, args["id"].(string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -1485,7 +1469,7 @@ func (ec *executionContext) _Mutation_deleteWish(ctx context.Context, field grap
 	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().DeleteWish(rctx, args["wishId"].(int))
+		return ec.resolvers.Mutation().DeleteWish(rctx, args["id"].(int))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -1526,7 +1510,7 @@ func (ec *executionContext) _Mutation_addWantToFulfill(ctx context.Context, fiel
 	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().AddWantToFulfill(rctx, args["wishId"].(int))
+		return ec.resolvers.Mutation().AddWantToFulfill(rctx, args["id"].(int))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -1543,7 +1527,7 @@ func (ec *executionContext) _Mutation_addWantToFulfill(ctx context.Context, fiel
 	return ec.marshalNWish2ᚖgithubᚗcomᚋryakoshᚋwishlistᚋlibᚋgraphᚋmodelᚐWish(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _Mutation_addClaimer(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+func (ec *executionContext) _Mutation_claimFulfillment(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -1559,7 +1543,7 @@ func (ec *executionContext) _Mutation_addClaimer(ctx context.Context, field grap
 
 	ctx = graphql.WithFieldContext(ctx, fc)
 	rawArgs := field.ArgumentMap(ec.Variables)
-	args, err := ec.field_Mutation_addClaimer_args(ctx, rawArgs)
+	args, err := ec.field_Mutation_claimFulfillment_args(ctx, rawArgs)
 	if err != nil {
 		ec.Error(ctx, err)
 		return graphql.Null
@@ -1567,48 +1551,7 @@ func (ec *executionContext) _Mutation_addClaimer(ctx context.Context, field grap
 	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().AddClaimer(rctx, args["wishId"].(int))
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(int)
-	fc.Result = res
-	return ec.marshalNInt2int(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) _Mutation_acceptClaimer(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	fc := &graphql.FieldContext{
-		Object:   "Mutation",
-		Field:    field,
-		Args:     nil,
-		IsMethod: true,
-	}
-
-	ctx = graphql.WithFieldContext(ctx, fc)
-	rawArgs := field.ArgumentMap(ec.Variables)
-	args, err := ec.field_Mutation_acceptClaimer_args(ctx, rawArgs)
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	fc.Args = args
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().AcceptClaimer(rctx, args["wishId"].(int), args["claimer"].(string))
+		return ec.resolvers.Mutation().ClaimFulfillment(rctx, args["id"].(int))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -1625,7 +1568,7 @@ func (ec *executionContext) _Mutation_acceptClaimer(ctx context.Context, field g
 	return ec.marshalNWish2ᚖgithubᚗcomᚋryakoshᚋwishlistᚋlibᚋgraphᚋmodelᚐWish(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _Mutation_rejectClaimer(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+func (ec *executionContext) _Mutation_acceptFulfillmentClaim(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -1641,7 +1584,7 @@ func (ec *executionContext) _Mutation_rejectClaimer(ctx context.Context, field g
 
 	ctx = graphql.WithFieldContext(ctx, fc)
 	rawArgs := field.ArgumentMap(ec.Variables)
-	args, err := ec.field_Mutation_rejectClaimer_args(ctx, rawArgs)
+	args, err := ec.field_Mutation_acceptFulfillmentClaim_args(ctx, rawArgs)
 	if err != nil {
 		ec.Error(ctx, err)
 		return graphql.Null
@@ -1649,7 +1592,48 @@ func (ec *executionContext) _Mutation_rejectClaimer(ctx context.Context, field g
 	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().RejectClaimer(rctx, args["wishId"].(int), args["claimer"].(string))
+		return ec.resolvers.Mutation().AcceptFulfillmentClaim(rctx, args["input"].(model.FulfillmentClaimer))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.Wish)
+	fc.Result = res
+	return ec.marshalNWish2ᚖgithubᚗcomᚋryakoshᚋwishlistᚋlibᚋgraphᚋmodelᚐWish(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Mutation_rejectFulfillmentClaim(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Mutation",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Mutation_rejectFulfillmentClaim_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().RejectFulfillmentClaim(rctx, args["input"].(model.FulfillmentClaimer))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -1731,7 +1715,7 @@ func (ec *executionContext) _Query_wish(ctx context.Context, field graphql.Colle
 	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().Wish(rctx, args["wishId"].(int))
+		return ec.resolvers.Query().Wish(rctx, args["id"].(int))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -3370,6 +3354,30 @@ func (ec *executionContext) ___Type_ofType(ctx context.Context, field graphql.Co
 
 // region    **************************** input.gotpl *****************************
 
+func (ec *executionContext) unmarshalInputFulfillmentClaimer(ctx context.Context, obj interface{}) (model.FulfillmentClaimer, error) {
+	var it model.FulfillmentClaimer
+	var asMap = obj.(map[string]interface{})
+
+	for k, v := range asMap {
+		switch k {
+		case "wishId":
+			var err error
+			it.WishID, err = ec.unmarshalNInt2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "claimerId":
+			var err error
+			it.ClaimerID, err = ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputLogin(ctx context.Context, obj interface{}) (model.Login, error) {
 	var it model.Login
 	var asMap = obj.(map[string]interface{})
@@ -3538,24 +3546,6 @@ func (ec *executionContext) unmarshalInputUpdateWish(ctx context.Context, obj in
 	return it, nil
 }
 
-func (ec *executionContext) unmarshalInputVerificationCode(ctx context.Context, obj interface{}) (model.VerificationCode, error) {
-	var it model.VerificationCode
-	var asMap = obj.(map[string]interface{})
-
-	for k, v := range asMap {
-		switch k {
-		case "code":
-			var err error
-			it.Code, err = ec.unmarshalNString2string(ctx, v)
-			if err != nil {
-				return it, err
-			}
-		}
-	}
-
-	return it, nil
-}
-
 // endregion **************************** input.gotpl *****************************
 
 // region    ************************** interface.gotpl ***************************
@@ -3604,13 +3594,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
-		case "requestFriendship":
-			out.Values[i] = ec._Mutation_requestFriendship(ctx, field)
+		case "sendFriendRequest":
+			out.Values[i] = ec._Mutation_sendFriendRequest(ctx, field)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
-		case "unRequestFriendship":
-			out.Values[i] = ec._Mutation_unRequestFriendship(ctx, field)
+		case "unSendFriendRequest":
+			out.Values[i] = ec._Mutation_unSendFriendRequest(ctx, field)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
@@ -3619,8 +3609,8 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
-		case "rejectFriendshipRequest":
-			out.Values[i] = ec._Mutation_rejectFriendshipRequest(ctx, field)
+		case "rejectFriendRequest":
+			out.Values[i] = ec._Mutation_rejectFriendRequest(ctx, field)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
@@ -3644,18 +3634,18 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
-		case "addClaimer":
-			out.Values[i] = ec._Mutation_addClaimer(ctx, field)
+		case "claimFulfillment":
+			out.Values[i] = ec._Mutation_claimFulfillment(ctx, field)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
-		case "acceptClaimer":
-			out.Values[i] = ec._Mutation_acceptClaimer(ctx, field)
+		case "acceptFulfillmentClaim":
+			out.Values[i] = ec._Mutation_acceptFulfillmentClaim(ctx, field)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
-		case "rejectClaimer":
-			out.Values[i] = ec._Mutation_rejectClaimer(ctx, field)
+		case "rejectFulfillmentClaim":
+			out.Values[i] = ec._Mutation_rejectFulfillmentClaim(ctx, field)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
@@ -4162,6 +4152,10 @@ func (ec *executionContext) marshalNBoolean2bool(ctx context.Context, sel ast.Se
 	return res
 }
 
+func (ec *executionContext) unmarshalNFulfillmentClaimer2githubᚗcomᚋryakoshᚋwishlistᚋlibᚋgraphᚋmodelᚐFulfillmentClaimer(ctx context.Context, v interface{}) (model.FulfillmentClaimer, error) {
+	return ec.unmarshalInputFulfillmentClaimer(ctx, v)
+}
+
 func (ec *executionContext) unmarshalNInt2int(ctx context.Context, v interface{}) (int, error) {
 	return graphql.UnmarshalInt(v)
 }
@@ -4273,10 +4267,6 @@ func (ec *executionContext) marshalNUser2ᚖgithubᚗcomᚋryakoshᚋwishlistᚋ
 		return graphql.Null
 	}
 	return ec._User(ctx, sel, v)
-}
-
-func (ec *executionContext) unmarshalNVerificationCode2githubᚗcomᚋryakoshᚋwishlistᚋlibᚋgraphᚋmodelᚐVerificationCode(ctx context.Context, v interface{}) (model.VerificationCode, error) {
-	return ec.unmarshalInputVerificationCode(ctx, v)
 }
 
 func (ec *executionContext) marshalNWish2githubᚗcomᚋryakoshᚋwishlistᚋlibᚋgraphᚋmodelᚐWish(ctx context.Context, sel ast.SelectionSet, v model.Wish) graphql.Marshaler {

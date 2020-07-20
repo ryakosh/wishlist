@@ -1,0 +1,29 @@
+type User {
+  id: String!
+  firstName: String
+  lastName: String
+  friends(page: Int! =  1, limit: Int! = 10 ): [User!]!
+  friendRequests(page: Int! = 1, limit: Int! = 10): [User!]!
+}
+
+type Token {
+  token: String!
+}
+
+input NewUser {
+  id: String!
+  firstName: String
+  lastName: String
+  email: String!
+  password: String!
+}
+
+input UpdateUser {
+  firstName: String
+  lastName: String
+}
+
+input Login {
+  id: String!
+  password: String!
+}

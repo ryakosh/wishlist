@@ -1,0 +1,30 @@
+type Wish {
+  id: Int!
+  user: User!
+  name: String!
+  description: String!
+  link: String!
+  image: String!
+  claimers(page: Int! =  1, limit: Int! = 10 ): [User!]!
+  fulfillers(page: Int! =  1, limit: Int! = 10 ): [User!]!
+}
+
+input NewWish {
+  name: String!
+  description: String
+  link: String
+  image: String
+}
+
+input UpdateWish {
+  id: Int!
+  name: String
+  description: String
+  link: String
+  image: String
+}
+
+input FulfillmentClaimer {
+    wishId: Int!
+    claimerId: String!
+}

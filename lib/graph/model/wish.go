@@ -25,3 +25,8 @@ type UpdateWish struct {
 	Link        *string `json:"link" validate:"omitempty,url"`
 	Image       *string `json:"image" validate:"omitempty,url"`
 }
+
+type FulfillmentClaimer struct {
+	WishID    int    `json:"wishId" validate:"min=0"`
+	ClaimerID string `json:"claimerId" validate:"username,max=64"`
+}
