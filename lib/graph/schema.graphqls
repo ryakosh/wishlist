@@ -1,5 +1,6 @@
 directive @goModel(model: String, models: [String!]) on OBJECT | INPUT_OBJECT | SCALAR | ENUM | INTERFACE | UNION
 directive @goField(forceResolver: Boolean, name: String) on INPUT_FIELD_DEFINITION | FIELD_DEFINITION
+directive @authRequired on FIELD_DEFINITION
 
 type Query {
   user(id: String!): User!
@@ -8,20 +9,20 @@ type Query {
 
 type Mutation {
   createUser(input: NewUser!): User!
-  updateUser(input: UpdateUser!): User!
+  updateUser(input: UpdateUser!): User! @authRequired
   deleteUser: String!
   genToken(input: Login!): String!
-  verifyEmail(code: String!): Boolean!
-  sendFriendRequest(id: String!): User!
-  unSendFriendRequest(id: String!): User!
-  acceptFriendRequest(id: String!): User!
-  rejectFriendRequest(id: String!): User!
+  verifyEmail(code: String!): Boolean! @authRequired
+  sendFriendRequest(id: String!): User! @authRequired
+  unSendFriendRequest(id: String!): User! @authRequired
+  acceptFriendRequest(id: String!): User! @authRequired
+  rejectFriendRequest(id: String!): User! @authRequired
 
-  createWish(input: NewWish!): Wish!
-  updateWish(input: UpdateWish!): Wish!
-  deleteWish(id: Int!): Int!
-  addWantToFulfill(id: Int!): Wish!
-  claimFulfillment(id: Int!): Wish!
-  acceptFulfillmentClaim(input: FulfillmentClaimer!): Wish!
-  rejectFulfillmentClaim(input: FulfillmentClaimer!): Wish!
+  createWish(input: NewWish!): Wish! @authRequired
+  updateWish(input: UpdateWish!): Wish! @authRequired
+  deleteWish(id: Int!): Int! @authRequired
+  addWantToFulfill(id: Int!): Wish! @authRequired
+  claimFulfillment(id: Int!): Wish! @authRequired
+  acceptFulfillmentClaim(input: FulfillmentClaimer!): Wish! @authRequired
+  rejectFulfillmentClaim(input: FulfillmentClaimer!): Wish! @authRequired
 }

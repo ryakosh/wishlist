@@ -8,8 +8,8 @@ type User {
 }
 
 type Users {
-  query(page: Int! =  1, limit: Int! = 10): [User!]!
-  count: Int! @goField(forceResolver: true)
+  query(page: Int! =  1, limit: Int! = 10): [User!]! @authRequired
+  count: Int! @goField(forceResolver: true) # TODO: Reconsider authentication
 }
 
 input NewUser {

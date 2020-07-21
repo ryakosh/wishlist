@@ -1,21 +1,22 @@
 package model
 
 import (
+	"context"
 	"errors"
 	"strings"
 	"time"
 
+	"github.com/99designs/gqlgen/graphql"
 	"github.com/alexedwards/argon2id"
-	"github.com/gin-gonic/gin"
 	"github.com/jinzhu/gorm"
 	"github.com/ryakosh/wishlist/lib"
 	"github.com/ryakosh/wishlist/lib/db"
 )
 
+type key int
+
 const (
-	// UserKey is a gin context keystore key used to indicate
-	// that a user is authenticated
-	authedUserKey = "AuthedUserKey"
+	authedUserKey key = iota
 )
 
 const (
@@ -119,25 +120,26 @@ func AreFriends(user, authedUser string) bool {
 	return true
 }
 
-// Authenticate is a middleware that is used to authenticate users
+// AuthRequired is a middleware that is used to authenticate users
 // on certain endpoints using Authorization header, it's not enforcing authentication
 // on endpoints that it's beeing used so endpoints should decide whether
 // they require authentication or not, however it aborts requests if
 // the provided token is malformed, expired or not valid
-func Authenticate(c *gin.Context) (string, error) {
-	authedUser := c.GetString(authedUserKey)
+func AuthRequired(ctx context.Context, obj interface{}, next graphql.Resolver) (interface{}, error) {
+	authedUser := AuthedUserFromCtx(ctx)
 	if authedUser != "" {
 		return authedUser, nil
 	}
 
+	c := lib.GinCtxFromCtx(ctx)
 	authorizationHeader := c.GetHeader("Authorization")
 	if authorizationHeader == "" {
-		return "", ErrUserNotAuthorized
+		return nil, ErrUserNotAuthorized
 	}
 
 	token := strings.Fields(authorizationHeader)
 	if len(token) != 2 || token[0] != "Bearer" {
-		return "", ErrBearerTokenMalformed
+		return nil, ErrBearerTokenMalformed
 	}
 
 	claims, valid, err := lib.Decode(token[1])
@@ -149,20 +151,34 @@ func Authenticate(c *gin.Context) (string, error) {
 		if d.Error != nil && !gorm.IsRecordNotFoundError(d.Error) {
 			lib.LogError(lib.LPanic, "Could not read user", d.Error)
 		} else if d.RecordNotFound() {
-			return "", ErrUserNotFound
+			return nil, ErrUserNotFound
 		}
 
 		authedUser = sub.(string)
-		c.Set(authedUserKey, authedUser)
+		ctx = context.WithValue(ctx, authedUserKey, authedUser)
 
-		return authedUser, nil
+		return next(ctx)
 	} else if lib.IsMalformed(err) {
-		return "", lib.ErrTokenIsMalformed
+		return nil, lib.ErrTokenIsMalformed
 	} else if lib.HasExpired(err) {
-		return "", lib.ErrTokenHasExpired
+		return nil, lib.ErrTokenHasExpired
 	} else {
-		return "", lib.ErrTokenIsInvalid
+		return nil, lib.ErrTokenIsInvalid
 	}
+}
+
+func AuthedUserFromCtx(ctx context.Context) string {
+	authedUser := ctx.Value(authedUserKey)
+	if authedUser == nil {
+		return ""
+	}
+
+	c, ok := authedUser.(string)
+	if !ok {
+		lib.LogError(lib.LFatal, "AuthedUser has wrong type", nil)
+	}
+
+	return c
 }
 
 // // RequireEmailVerification is a middleware that is used to

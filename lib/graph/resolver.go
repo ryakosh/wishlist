@@ -20,11 +20,7 @@ func (r *Resolver) handleClaimer(ctx context.Context, wishID int,
 	claimer string, appendTo db.Association) (*model.Wish, error) {
 	var wish dbmodel.Wish
 
-	c := lib.GinCtxFromCtx(ctx)
-	authedUser, err := dbmodel.Authenticate(c)
-	if err != nil {
-		return nil, err
-	}
+	authedUser := dbmodel.AuthedUserFromCtx(ctx)
 
 	d := r.DB.Select("id, name, owner, description, link, image").First(&wish, wishID)
 	if d.RecordNotFound() {
@@ -40,7 +36,7 @@ func (r *Resolver) handleClaimer(ctx context.Context, wishID int,
 		return nil, dbmodel.ErrUserNotFound
 	}
 
-	err = r.DB.Transaction(func(tx *gorm.DB) error {
+	err := r.DB.Transaction(func(tx *gorm.DB) error {
 		asso := tx.Model(&wish).Association(string(appendTo)).Append(&dbmodel.User{ID: claimer})
 		if asso.Error != nil {
 			return asso.Error

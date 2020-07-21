@@ -38,13 +38,9 @@ func (r *usersResolver) Query(ctx context.Context, obj *model.Users, page int, l
 	var res []*model.User
 	var d *gorm.DB
 
-	c := lib.GinCtxFromCtx(ctx)
-	authedUser, err := dbmodel.Authenticate(c)
-	if err != nil {
-		return nil, err
-	}
+	authedUser := dbmodel.AuthedUserFromCtx(ctx)
 
-	err = lib.Validator.Struct(struct {
+	err := lib.Validator.Struct(struct {
 		Page  int `validate:"min=1"`
 		Limit int `validate:"min=1,max=10"`
 	}{

@@ -76,13 +76,9 @@ func (r *mutationResolver) CreateUser(ctx context.Context, input model.NewUser) 
 }
 
 func (r *mutationResolver) UpdateUser(ctx context.Context, input model.UpdateUser) (*model.User, error) {
-	c := lib.GinCtxFromCtx(ctx)
-	authedUser, err := dbmodel.Authenticate(c)
-	if err != nil {
-		return nil, err
-	}
+	authedUser := dbmodel.AuthedUserFromCtx(ctx)
 
-	err = lib.Validator.Struct(&input)
+	err := lib.Validator.Struct(&input)
 	if err != nil {
 		return nil, lib.ErrValidationFailed
 	}
@@ -105,11 +101,7 @@ func (r *mutationResolver) UpdateUser(ctx context.Context, input model.UpdateUse
 }
 
 func (r *mutationResolver) DeleteUser(ctx context.Context) (string, error) {
-	c := lib.GinCtxFromCtx(ctx)
-	authedUser, err := dbmodel.Authenticate(c)
-	if err != nil {
-		return "", err
-	}
+	authedUser := dbmodel.AuthedUserFromCtx(ctx)
 
 	d := r.DB.Delete(&dbmodel.User{ID: authedUser})
 	if d.Error != nil {
@@ -140,13 +132,9 @@ func (r *mutationResolver) GenToken(ctx context.Context, input model.Login) (str
 func (r *mutationResolver) VerifyEmail(ctx context.Context, code string) (bool, error) {
 	var user dbmodel.User
 
-	c := lib.GinCtxFromCtx(ctx)
-	authedUser, err := dbmodel.Authenticate(c)
-	if err != nil {
-		return false, err
-	}
+	authedUser := dbmodel.AuthedUserFromCtx(ctx)
 
-	err = lib.Validator.Var(code, "max=14")
+	err := lib.Validator.Var(code, "max=14")
 	if err != nil {
 		return false, lib.ErrValidationFailed
 	}
@@ -182,13 +170,9 @@ func (r *mutationResolver) SendFriendRequest(ctx context.Context, id string) (*m
 	var friendsCount uint8
 	var friendRequestsCount uint8
 
-	c := lib.GinCtxFromCtx(ctx)
-	authedUser, err := dbmodel.Authenticate(c)
-	if err != nil {
-		return nil, err
-	}
+	authedUser := dbmodel.AuthedUserFromCtx(ctx)
 
-	err = lib.Validator.Var(id, "username,max=64")
+	err := lib.Validator.Var(id, "username,max=64")
 	if err != nil {
 		return nil, lib.ErrValidationFailed
 	}
@@ -235,13 +219,9 @@ func (r *mutationResolver) SendFriendRequest(ctx context.Context, id string) (*m
 func (r *mutationResolver) UnSendFriendRequest(ctx context.Context, id string) (*model.User, error) {
 	var requestees []dbmodel.User
 
-	c := lib.GinCtxFromCtx(ctx)
-	authedUser, err := dbmodel.Authenticate(c)
-	if err != nil {
-		return nil, err
-	}
+	authedUser := dbmodel.AuthedUserFromCtx(ctx)
 
-	err = lib.Validator.Var(id, "username,max=64")
+	err := lib.Validator.Var(id, "username,max=64")
 	if err != nil {
 		return nil, lib.ErrValidationFailed
 	}
@@ -270,13 +250,9 @@ func (r *mutationResolver) UnSendFriendRequest(ctx context.Context, id string) (
 func (r *mutationResolver) AcceptFriendRequest(ctx context.Context, id string) (*model.User, error) {
 	var requestees []dbmodel.User
 
-	c := lib.GinCtxFromCtx(ctx)
-	authedUser, err := dbmodel.Authenticate(c)
-	if err != nil {
-		return nil, err
-	}
+	authedUser := dbmodel.AuthedUserFromCtx(ctx)
 
-	err = lib.Validator.Var(id, "username,max=64")
+	err := lib.Validator.Var(id, "username,max=64")
 	if err != nil {
 		return nil, lib.ErrValidationFailed
 	}
@@ -326,13 +302,9 @@ func (r *mutationResolver) AcceptFriendRequest(ctx context.Context, id string) (
 func (r *mutationResolver) RejectFriendRequest(ctx context.Context, id string) (*model.User, error) {
 	var requestees []dbmodel.User
 
-	c := lib.GinCtxFromCtx(ctx)
-	authedUser, err := dbmodel.Authenticate(c)
-	if err != nil {
-		return nil, err
-	}
+	authedUser := dbmodel.AuthedUserFromCtx(ctx)
 
-	err = lib.Validator.Var(id, "username,max=64")
+	err := lib.Validator.Var(id, "username,max=64")
 	if err != nil {
 		return nil, lib.ErrValidationFailed
 	}
@@ -362,13 +334,9 @@ func (r *mutationResolver) RejectFriendRequest(ctx context.Context, id string) (
 }
 
 func (r *mutationResolver) CreateWish(ctx context.Context, input model.NewWish) (*model.Wish, error) {
-	c := lib.GinCtxFromCtx(ctx)
-	authedUser, err := dbmodel.Authenticate(c)
-	if err != nil {
-		return nil, err
-	}
+	authedUser := dbmodel.AuthedUserFromCtx(ctx)
 
-	err = lib.Validator.Struct(&input)
+	err := lib.Validator.Struct(&input)
 	if err != nil {
 		return nil, lib.ErrValidationFailed
 	}
@@ -401,13 +369,9 @@ func (r *mutationResolver) CreateWish(ctx context.Context, input model.NewWish) 
 func (r *mutationResolver) UpdateWish(ctx context.Context, input model.UpdateWish) (*model.Wish, error) {
 	var wish dbmodel.Wish
 
-	c := lib.GinCtxFromCtx(ctx)
-	authedUser, err := dbmodel.Authenticate(c)
-	if err != nil {
-		return nil, err
-	}
+	authedUser := dbmodel.AuthedUserFromCtx(ctx)
 
-	err = lib.Validator.Struct(&input)
+	err := lib.Validator.Struct(&input)
 	if err != nil {
 		return nil, lib.ErrValidationFailed
 	}
@@ -448,13 +412,9 @@ func (r *mutationResolver) UpdateWish(ctx context.Context, input model.UpdateWis
 func (r *mutationResolver) DeleteWish(ctx context.Context, id int) (int, error) {
 	var wish dbmodel.Wish
 
-	c := lib.GinCtxFromCtx(ctx)
-	authedUser, err := dbmodel.Authenticate(c)
-	if err != nil {
-		return 0, err
-	}
+	authedUser := dbmodel.AuthedUserFromCtx(ctx)
 
-	err = lib.Validator.Var(id, "min=0")
+	err := lib.Validator.Var(id, "min=0")
 	if err != nil {
 		return 0, lib.ErrValidationFailed
 	}
@@ -480,13 +440,9 @@ func (r *mutationResolver) DeleteWish(ctx context.Context, id int) (int, error) 
 func (r *mutationResolver) AddWantToFulfill(ctx context.Context, id int) (*model.Wish, error) {
 	var wish dbmodel.Wish
 
-	c := lib.GinCtxFromCtx(ctx)
-	authedUser, err := dbmodel.Authenticate(c)
-	if err != nil {
-		return nil, err
-	}
+	authedUser := dbmodel.AuthedUserFromCtx(ctx)
 
-	err = lib.Validator.Var(id, "min=0")
+	err := lib.Validator.Var(id, "min=0")
 	if err != nil {
 		return nil, lib.ErrValidationFailed
 	}
@@ -528,13 +484,9 @@ func (r *mutationResolver) AddWantToFulfill(ctx context.Context, id int) (*model
 func (r *mutationResolver) ClaimFulfillment(ctx context.Context, id int) (*model.Wish, error) {
 	var wish dbmodel.Wish
 
-	c := lib.GinCtxFromCtx(ctx)
-	authedUser, err := dbmodel.Authenticate(c)
-	if err != nil {
-		return nil, err
-	}
+	authedUser := dbmodel.AuthedUserFromCtx(ctx)
 
-	err = lib.Validator.Var(id, "min=0")
+	err := lib.Validator.Var(id, "min=0")
 	if err != nil {
 		return nil, lib.ErrValidationFailed
 	}

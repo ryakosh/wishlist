@@ -10,6 +10,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/ryakosh/wishlist/lib"
 	"github.com/ryakosh/wishlist/lib/db"
+	dbmodel "github.com/ryakosh/wishlist/lib/db/model"
 	"github.com/ryakosh/wishlist/lib/graph"
 	"github.com/ryakosh/wishlist/lib/graph/generated"
 )
@@ -24,6 +25,7 @@ var accessLog *log.Logger
 
 func graphqlHandler() gin.HandlerFunc {
 	config := generated.Config{Resolvers: &graph.Resolver{DB: db.DB}}
+	config.Directives.AuthRequired = dbmodel.AuthRequired
 	calcComplexity(&config.Complexity)
 
 	h := handler.NewDefaultServer(generated.NewExecutableSchema(config))
