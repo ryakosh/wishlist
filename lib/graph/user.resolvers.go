@@ -13,6 +13,41 @@ import (
 	"github.com/ryakosh/wishlist/lib/graph/model"
 )
 
+func (r *userResolver) Wishes(ctx context.Context, obj *model.User, page int, limit int) ([]*model.Wish, error) {
+	var wishes []dbmodel.Wish
+	var res []*model.Wish
+
+	err := lib.Validator.Struct(struct {
+		Page  int `validate:"min=1"`
+		Limit int `validate:"min=1,max=10"`
+	}{Page: page, Limit: limit})
+	if err != nil {
+		return nil, lib.ErrValidationFailed
+	}
+
+	d := r.DB.Model(&dbmodel.User{ID: obj.ID}).Select(
+		"id, name, owner, description, link, image").Offset(
+		(page * limit) - limit).Limit(limit).Association(string(dbmodel.UserWishesAsso)).Find(&wishes)
+	if d.Error != nil && !gorm.IsRecordNotFoundError(d.Error) {
+		lib.LogError(lib.LPanic, "Could not read user's friends", d.Error)
+	}
+
+	for _, w := range wishes {
+		res = append(res, &model.Wish{
+			ID:                  w.ID,
+			Owner:               w.Owner,
+			Name:                w.Name,
+			Description:         w.Description,
+			Link:                w.Link,
+			Image:               w.Image,
+			FulfillmentClaimers: w.ID,
+			Fulfillers:          w.ID,
+		})
+	}
+
+	return res, nil
+}
+
 func (r *userResolver) Friends(ctx context.Context, obj *model.User, page int, limit int) ([]*model.User, error) {
 	var friends []dbmodel.User
 	var res []*model.User

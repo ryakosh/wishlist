@@ -2,7 +2,8 @@ type User {
   id: String!
   firstName: String
   lastName: String
-  friends(page: Int! =  1, limit: Int! = 10 ): [User!]!
+  wishes(page: Int! =  1, limit: Int! = 10): [Wish!]!
+  friends(page: Int! =  1, limit: Int! = 10): [User!]!
   friendRequests(page: Int! = 1, limit: Int! = 10): [User!]!
 }
 
