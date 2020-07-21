@@ -11,6 +11,12 @@ type Wish struct {
 	Fulfillers          int    `json:"fulfillers"`
 }
 
+type Wishes struct {
+	Query string `json:"wishes"`
+	Count int    `json:"count"`
+	InObj *User  // Parent model
+}
+
 type NewWish struct {
 	Name        string `json:"name" validate:"min=1,max=256"`
 	Description string `json:"description" validate:"omitempty,max=1024"`

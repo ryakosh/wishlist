@@ -1,5 +1,7 @@
 package model
 
+import "github.com/ryakosh/wishlist/lib/db"
+
 type User struct {
 	ID             string  `json:"id"`
 	FirstName      *string `json:"firstName"`
@@ -7,6 +9,13 @@ type User struct {
 	Wishes         string  `json:"wishes"`
 	Friends        string  `json:"friends"`
 	FriendRequests string  `json:"friendRequests"`
+}
+
+type Users struct {
+	Query         string      `json:"users"` // User ID as string or wish ID as string
+	Count         int         `json:"count"`
+	InObj         interface{} // Parent model
+	InAssociation db.Association
 }
 
 type NewUser struct {

@@ -68,6 +68,7 @@ func (r *Resolver) handleClaimer(ctx context.Context, wishID int,
 		Fulfillers:          wish.ID,
 	}, nil
 }
+
 func (r *Resolver) user(ctx context.Context, id string) (*model.User, error) {
 	var user dbmodel.User
 
@@ -86,6 +87,7 @@ func (r *Resolver) user(ctx context.Context, id string) (*model.User, error) {
 		FriendRequests: user.ID,
 	}, nil
 }
+
 func (r *Resolver) wish(ctx context.Context, wishID int) (*model.Wish, error) {
 	var wish dbmodel.Wish
 
@@ -105,42 +107,4 @@ func (r *Resolver) wish(ctx context.Context, wishID int) (*model.Wish, error) {
 		FulfillmentClaimers: wish.ID,
 		Fulfillers:          wish.ID,
 	}, nil
-}
-
-func (r *Resolver) wishUsers(ctx context.Context, wishID int, asso db.Association, page int, limit int) ([]*model.User, error) {
-	var wish dbmodel.Wish
-	var users []dbmodel.User
-	var res []*model.User
-
-	c := lib.GinCtxFromCtx(ctx)
-	authedUser, err := dbmodel.Authenticate(c)
-	if err != nil {
-		return nil, err
-	}
-
-	d := r.DB.Select("id, owner").First(&wish, wishID)
-	if d.Error != nil && !gorm.IsRecordNotFoundError(d.Error) {
-		lib.LogError(lib.LPanic, "Could not read wish", d.Error)
-	} else if d.RecordNotFound() {
-		return nil, dbmodel.ErrWishNotFound
-	}
-
-	if authedUser != wish.Owner {
-		return nil, dbmodel.ErrUserNotAuthorized
-	}
-
-	r.DB.Model(&wish).Select("id, first_name, last_name").Offset(
-		(page * limit) - limit).Limit(limit).Association(string(asso)).Find(&users)
-
-	for _, u := range users {
-		res = append(res, &model.User{
-			ID:             u.ID,
-			FirstName:      u.FirstName,
-			LastName:       u.LastName,
-			Friends:        u.ID,
-			FriendRequests: u.ID,
-		})
-	}
-
-	return res, nil
 }

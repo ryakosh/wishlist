@@ -2,9 +2,14 @@ type User {
   id: String!
   firstName: String
   lastName: String
-  wishes(page: Int! =  1, limit: Int! = 10): [Wish!]!
-  friends(page: Int! =  1, limit: Int! = 10): [User!]!
-  friendRequests(page: Int! = 1, limit: Int! = 10): [User!]!
+  wishes: Wishes!
+  friends: Users!
+  friendRequests: Users!
+}
+
+type Users {
+  query(page: Int! =  1, limit: Int! = 10): [User!]!
+  count: Int! @goField(forceResolver: true)
 }
 
 input NewUser {

@@ -5,8 +5,13 @@ type Wish {
   description: String!
   link: String!
   image: String!
-  fulfillmentClaimers(page: Int! =  1, limit: Int! = 10 ): [User!]!
-  fulfillers(page: Int! =  1, limit: Int! = 10 ): [User!]!
+  fulfillmentClaimers: Users!
+  fulfillers: Users!
+}
+
+type Wishes {
+  query(page: Int! =  1, limit: Int! = 10): [Wish!]!
+  count: Int! @goField(forceResolver: true)
 }
 
 input NewWish {

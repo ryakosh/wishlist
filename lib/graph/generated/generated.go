@@ -38,7 +38,9 @@ type ResolverRoot interface {
 	Mutation() MutationResolver
 	Query() QueryResolver
 	User() UserResolver
+	Users() UsersResolver
 	Wish() WishResolver
+	Wishes() WishesResolver
 }
 
 type DirectiveRoot struct {
@@ -71,22 +73,32 @@ type ComplexityRoot struct {
 
 	User struct {
 		FirstName      func(childComplexity int) int
-		FriendRequests func(childComplexity int, page int, limit int) int
-		Friends        func(childComplexity int, page int, limit int) int
+		FriendRequests func(childComplexity int) int
+		Friends        func(childComplexity int) int
 		ID             func(childComplexity int) int
 		LastName       func(childComplexity int) int
-		Wishes         func(childComplexity int, page int, limit int) int
+		Wishes         func(childComplexity int) int
+	}
+
+	Users struct {
+		Count func(childComplexity int) int
+		Query func(childComplexity int, page int, limit int) int
 	}
 
 	Wish struct {
 		Description         func(childComplexity int) int
-		Fulfillers          func(childComplexity int, page int, limit int) int
-		FulfillmentClaimers func(childComplexity int, page int, limit int) int
+		Fulfillers          func(childComplexity int) int
+		FulfillmentClaimers func(childComplexity int) int
 		ID                  func(childComplexity int) int
 		Image               func(childComplexity int) int
 		Link                func(childComplexity int) int
 		Name                func(childComplexity int) int
 		Owner               func(childComplexity int) int
+	}
+
+	Wishes struct {
+		Count func(childComplexity int) int
+		Query func(childComplexity int, page int, limit int) int
 	}
 }
 
@@ -113,15 +125,23 @@ type QueryResolver interface {
 	Wish(ctx context.Context, id int) (*model.Wish, error)
 }
 type UserResolver interface {
-	Wishes(ctx context.Context, obj *model.User, page int, limit int) ([]*model.Wish, error)
-	Friends(ctx context.Context, obj *model.User, page int, limit int) ([]*model.User, error)
-	FriendRequests(ctx context.Context, obj *model.User, page int, limit int) ([]*model.User, error)
+	Wishes(ctx context.Context, obj *model.User) (*model.Wishes, error)
+	Friends(ctx context.Context, obj *model.User) (*model.Users, error)
+	FriendRequests(ctx context.Context, obj *model.User) (*model.Users, error)
+}
+type UsersResolver interface {
+	Query(ctx context.Context, obj *model.Users, page int, limit int) ([]*model.User, error)
+	Count(ctx context.Context, obj *model.Users) (int, error)
 }
 type WishResolver interface {
 	Owner(ctx context.Context, obj *model.Wish) (*model.User, error)
 
-	FulfillmentClaimers(ctx context.Context, obj *model.Wish, page int, limit int) ([]*model.User, error)
-	Fulfillers(ctx context.Context, obj *model.Wish, page int, limit int) ([]*model.User, error)
+	FulfillmentClaimers(ctx context.Context, obj *model.Wish) (*model.Users, error)
+	Fulfillers(ctx context.Context, obj *model.Wish) (*model.Users, error)
+}
+type WishesResolver interface {
+	Query(ctx context.Context, obj *model.Wishes, page int, limit int) ([]*model.Wish, error)
+	Count(ctx context.Context, obj *model.Wishes) (int, error)
 }
 
 type executableSchema struct {
@@ -362,24 +382,14 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_User_friendRequests_args(context.TODO(), rawArgs)
-		if err != nil {
-			return 0, false
-		}
-
-		return e.complexity.User.FriendRequests(childComplexity, args["page"].(int), args["limit"].(int)), true
+		return e.complexity.User.FriendRequests(childComplexity), true
 
 	case "User.friends":
 		if e.complexity.User.Friends == nil {
 			break
 		}
 
-		args, err := ec.field_User_friends_args(context.TODO(), rawArgs)
-		if err != nil {
-			return 0, false
-		}
-
-		return e.complexity.User.Friends(childComplexity, args["page"].(int), args["limit"].(int)), true
+		return e.complexity.User.Friends(childComplexity), true
 
 	case "User.id":
 		if e.complexity.User.ID == nil {
@@ -400,12 +410,26 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_User_wishes_args(context.TODO(), rawArgs)
+		return e.complexity.User.Wishes(childComplexity), true
+
+	case "Users.count":
+		if e.complexity.Users.Count == nil {
+			break
+		}
+
+		return e.complexity.Users.Count(childComplexity), true
+
+	case "Users.query":
+		if e.complexity.Users.Query == nil {
+			break
+		}
+
+		args, err := ec.field_Users_query_args(context.TODO(), rawArgs)
 		if err != nil {
 			return 0, false
 		}
 
-		return e.complexity.User.Wishes(childComplexity, args["page"].(int), args["limit"].(int)), true
+		return e.complexity.Users.Query(childComplexity, args["page"].(int), args["limit"].(int)), true
 
 	case "Wish.description":
 		if e.complexity.Wish.Description == nil {
@@ -419,24 +443,14 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Wish_fulfillers_args(context.TODO(), rawArgs)
-		if err != nil {
-			return 0, false
-		}
-
-		return e.complexity.Wish.Fulfillers(childComplexity, args["page"].(int), args["limit"].(int)), true
+		return e.complexity.Wish.Fulfillers(childComplexity), true
 
 	case "Wish.fulfillmentClaimers":
 		if e.complexity.Wish.FulfillmentClaimers == nil {
 			break
 		}
 
-		args, err := ec.field_Wish_fulfillmentClaimers_args(context.TODO(), rawArgs)
-		if err != nil {
-			return 0, false
-		}
-
-		return e.complexity.Wish.FulfillmentClaimers(childComplexity, args["page"].(int), args["limit"].(int)), true
+		return e.complexity.Wish.FulfillmentClaimers(childComplexity), true
 
 	case "Wish.id":
 		if e.complexity.Wish.ID == nil {
@@ -472,6 +486,25 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Wish.Owner(childComplexity), true
+
+	case "Wishes.count":
+		if e.complexity.Wishes.Count == nil {
+			break
+		}
+
+		return e.complexity.Wishes.Count(childComplexity), true
+
+	case "Wishes.query":
+		if e.complexity.Wishes.Query == nil {
+			break
+		}
+
+		args, err := ec.field_Wishes_query_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Wishes.Query(childComplexity, args["page"].(int), args["limit"].(int)), true
 
 	}
 	return 0, false
@@ -537,7 +570,10 @@ func (ec *executionContext) introspectType(name string) (*introspection.Type, er
 }
 
 var sources = []*ast.Source{
-	&ast.Source{Name: "lib/graph/schema.graphqls", Input: `type Query {
+	&ast.Source{Name: "lib/graph/schema.graphqls", Input: `directive @goModel(model: String, models: [String!]) on OBJECT | INPUT_OBJECT | SCALAR | ENUM | INTERFACE | UNION
+directive @goField(forceResolver: Boolean, name: String) on INPUT_FIELD_DEFINITION | FIELD_DEFINITION
+
+type Query {
   user(id: String!): User!
   wish(id: Int!): Wish!
 }
@@ -565,9 +601,14 @@ type Mutation {
   id: String!
   firstName: String
   lastName: String
-  wishes(page: Int! =  1, limit: Int! = 10): [Wish!]!
-  friends(page: Int! =  1, limit: Int! = 10): [User!]!
-  friendRequests(page: Int! = 1, limit: Int! = 10): [User!]!
+  wishes: Wishes!
+  friends: Users!
+  friendRequests: Users!
+}
+
+type Users {
+  query(page: Int! =  1, limit: Int! = 10): [User!]!
+  count: Int! @goField(forceResolver: true)
 }
 
 input NewUser {
@@ -594,8 +635,13 @@ input Login {
   description: String!
   link: String!
   image: String!
-  fulfillmentClaimers(page: Int! =  1, limit: Int! = 10 ): [User!]!
-  fulfillers(page: Int! =  1, limit: Int! = 10 ): [User!]!
+  fulfillmentClaimers: Users!
+  fulfillers: Users!
+}
+
+type Wishes {
+  query(page: Int! =  1, limit: Int! = 10): [Wish!]!
+  count: Int! @goField(forceResolver: true)
 }
 
 input NewWish {
@@ -877,7 +923,7 @@ func (ec *executionContext) field_Query_wish_args(ctx context.Context, rawArgs m
 	return args, nil
 }
 
-func (ec *executionContext) field_User_friendRequests_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+func (ec *executionContext) field_Users_query_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
 	var arg0 int
@@ -899,73 +945,7 @@ func (ec *executionContext) field_User_friendRequests_args(ctx context.Context, 
 	return args, nil
 }
 
-func (ec *executionContext) field_User_friends_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
-	var err error
-	args := map[string]interface{}{}
-	var arg0 int
-	if tmp, ok := rawArgs["page"]; ok {
-		arg0, err = ec.unmarshalNInt2int(ctx, tmp)
-		if err != nil {
-			return nil, err
-		}
-	}
-	args["page"] = arg0
-	var arg1 int
-	if tmp, ok := rawArgs["limit"]; ok {
-		arg1, err = ec.unmarshalNInt2int(ctx, tmp)
-		if err != nil {
-			return nil, err
-		}
-	}
-	args["limit"] = arg1
-	return args, nil
-}
-
-func (ec *executionContext) field_User_wishes_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
-	var err error
-	args := map[string]interface{}{}
-	var arg0 int
-	if tmp, ok := rawArgs["page"]; ok {
-		arg0, err = ec.unmarshalNInt2int(ctx, tmp)
-		if err != nil {
-			return nil, err
-		}
-	}
-	args["page"] = arg0
-	var arg1 int
-	if tmp, ok := rawArgs["limit"]; ok {
-		arg1, err = ec.unmarshalNInt2int(ctx, tmp)
-		if err != nil {
-			return nil, err
-		}
-	}
-	args["limit"] = arg1
-	return args, nil
-}
-
-func (ec *executionContext) field_Wish_fulfillers_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
-	var err error
-	args := map[string]interface{}{}
-	var arg0 int
-	if tmp, ok := rawArgs["page"]; ok {
-		arg0, err = ec.unmarshalNInt2int(ctx, tmp)
-		if err != nil {
-			return nil, err
-		}
-	}
-	args["page"] = arg0
-	var arg1 int
-	if tmp, ok := rawArgs["limit"]; ok {
-		arg1, err = ec.unmarshalNInt2int(ctx, tmp)
-		if err != nil {
-			return nil, err
-		}
-	}
-	args["limit"] = arg1
-	return args, nil
-}
-
-func (ec *executionContext) field_Wish_fulfillmentClaimers_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+func (ec *executionContext) field_Wishes_query_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
 	var arg0 int
@@ -1934,16 +1914,9 @@ func (ec *executionContext) _User_wishes(ctx context.Context, field graphql.Coll
 	}
 
 	ctx = graphql.WithFieldContext(ctx, fc)
-	rawArgs := field.ArgumentMap(ec.Variables)
-	args, err := ec.field_User_wishes_args(ctx, rawArgs)
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.User().Wishes(rctx, obj, args["page"].(int), args["limit"].(int))
+		return ec.resolvers.User().Wishes(rctx, obj)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -1955,9 +1928,9 @@ func (ec *executionContext) _User_wishes(ctx context.Context, field graphql.Coll
 		}
 		return graphql.Null
 	}
-	res := resTmp.([]*model.Wish)
+	res := resTmp.(*model.Wishes)
 	fc.Result = res
-	return ec.marshalNWish2ᚕᚖgithubᚗcomᚋryakoshᚋwishlistᚋlibᚋgraphᚋmodelᚐWishᚄ(ctx, field.Selections, res)
+	return ec.marshalNWishes2ᚖgithubᚗcomᚋryakoshᚋwishlistᚋlibᚋgraphᚋmodelᚐWishes(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _User_friends(ctx context.Context, field graphql.CollectedField, obj *model.User) (ret graphql.Marshaler) {
@@ -1975,16 +1948,9 @@ func (ec *executionContext) _User_friends(ctx context.Context, field graphql.Col
 	}
 
 	ctx = graphql.WithFieldContext(ctx, fc)
-	rawArgs := field.ArgumentMap(ec.Variables)
-	args, err := ec.field_User_friends_args(ctx, rawArgs)
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.User().Friends(rctx, obj, args["page"].(int), args["limit"].(int))
+		return ec.resolvers.User().Friends(rctx, obj)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -1996,9 +1962,9 @@ func (ec *executionContext) _User_friends(ctx context.Context, field graphql.Col
 		}
 		return graphql.Null
 	}
-	res := resTmp.([]*model.User)
+	res := resTmp.(*model.Users)
 	fc.Result = res
-	return ec.marshalNUser2ᚕᚖgithubᚗcomᚋryakoshᚋwishlistᚋlibᚋgraphᚋmodelᚐUserᚄ(ctx, field.Selections, res)
+	return ec.marshalNUsers2ᚖgithubᚗcomᚋryakoshᚋwishlistᚋlibᚋgraphᚋmodelᚐUsers(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _User_friendRequests(ctx context.Context, field graphql.CollectedField, obj *model.User) (ret graphql.Marshaler) {
@@ -2016,8 +1982,42 @@ func (ec *executionContext) _User_friendRequests(ctx context.Context, field grap
 	}
 
 	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.User().FriendRequests(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.Users)
+	fc.Result = res
+	return ec.marshalNUsers2ᚖgithubᚗcomᚋryakoshᚋwishlistᚋlibᚋgraphᚋmodelᚐUsers(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Users_query(ctx context.Context, field graphql.CollectedField, obj *model.Users) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Users",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
 	rawArgs := field.ArgumentMap(ec.Variables)
-	args, err := ec.field_User_friendRequests_args(ctx, rawArgs)
+	args, err := ec.field_Users_query_args(ctx, rawArgs)
 	if err != nil {
 		ec.Error(ctx, err)
 		return graphql.Null
@@ -2025,7 +2025,7 @@ func (ec *executionContext) _User_friendRequests(ctx context.Context, field grap
 	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.User().FriendRequests(rctx, obj, args["page"].(int), args["limit"].(int))
+		return ec.resolvers.Users().Query(rctx, obj, args["page"].(int), args["limit"].(int))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -2040,6 +2040,40 @@ func (ec *executionContext) _User_friendRequests(ctx context.Context, field grap
 	res := resTmp.([]*model.User)
 	fc.Result = res
 	return ec.marshalNUser2ᚕᚖgithubᚗcomᚋryakoshᚋwishlistᚋlibᚋgraphᚋmodelᚐUserᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Users_count(ctx context.Context, field graphql.CollectedField, obj *model.Users) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Users",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Users().Count(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Wish_id(ctx context.Context, field graphql.CollectedField, obj *model.Wish) (ret graphql.Marshaler) {
@@ -2261,16 +2295,9 @@ func (ec *executionContext) _Wish_fulfillmentClaimers(ctx context.Context, field
 	}
 
 	ctx = graphql.WithFieldContext(ctx, fc)
-	rawArgs := field.ArgumentMap(ec.Variables)
-	args, err := ec.field_Wish_fulfillmentClaimers_args(ctx, rawArgs)
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Wish().FulfillmentClaimers(rctx, obj, args["page"].(int), args["limit"].(int))
+		return ec.resolvers.Wish().FulfillmentClaimers(rctx, obj)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -2282,9 +2309,9 @@ func (ec *executionContext) _Wish_fulfillmentClaimers(ctx context.Context, field
 		}
 		return graphql.Null
 	}
-	res := resTmp.([]*model.User)
+	res := resTmp.(*model.Users)
 	fc.Result = res
-	return ec.marshalNUser2ᚕᚖgithubᚗcomᚋryakoshᚋwishlistᚋlibᚋgraphᚋmodelᚐUserᚄ(ctx, field.Selections, res)
+	return ec.marshalNUsers2ᚖgithubᚗcomᚋryakoshᚋwishlistᚋlibᚋgraphᚋmodelᚐUsers(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Wish_fulfillers(ctx context.Context, field graphql.CollectedField, obj *model.Wish) (ret graphql.Marshaler) {
@@ -2302,16 +2329,9 @@ func (ec *executionContext) _Wish_fulfillers(ctx context.Context, field graphql.
 	}
 
 	ctx = graphql.WithFieldContext(ctx, fc)
-	rawArgs := field.ArgumentMap(ec.Variables)
-	args, err := ec.field_Wish_fulfillers_args(ctx, rawArgs)
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Wish().Fulfillers(rctx, obj, args["page"].(int), args["limit"].(int))
+		return ec.resolvers.Wish().Fulfillers(rctx, obj)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -2323,9 +2343,84 @@ func (ec *executionContext) _Wish_fulfillers(ctx context.Context, field graphql.
 		}
 		return graphql.Null
 	}
-	res := resTmp.([]*model.User)
+	res := resTmp.(*model.Users)
 	fc.Result = res
-	return ec.marshalNUser2ᚕᚖgithubᚗcomᚋryakoshᚋwishlistᚋlibᚋgraphᚋmodelᚐUserᚄ(ctx, field.Selections, res)
+	return ec.marshalNUsers2ᚖgithubᚗcomᚋryakoshᚋwishlistᚋlibᚋgraphᚋmodelᚐUsers(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Wishes_query(ctx context.Context, field graphql.CollectedField, obj *model.Wishes) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Wishes",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Wishes_query_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Wishes().Query(rctx, obj, args["page"].(int), args["limit"].(int))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*model.Wish)
+	fc.Result = res
+	return ec.marshalNWish2ᚕᚖgithubᚗcomᚋryakoshᚋwishlistᚋlibᚋgraphᚋmodelᚐWishᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Wishes_count(ctx context.Context, field graphql.CollectedField, obj *model.Wishes) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Wishes",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Wishes().Count(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) ___Directive_name(ctx context.Context, field graphql.CollectedField, obj *introspection.Directive) (ret graphql.Marshaler) {
@@ -3820,6 +3915,56 @@ func (ec *executionContext) _User(ctx context.Context, sel ast.SelectionSet, obj
 	return out
 }
 
+var usersImplementors = []string{"Users"}
+
+func (ec *executionContext) _Users(ctx context.Context, sel ast.SelectionSet, obj *model.Users) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, usersImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("Users")
+		case "query":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Users_query(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			})
+		case "count":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Users_count(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			})
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
 var wishImplementors = []string{"Wish"}
 
 func (ec *executionContext) _Wish(ctx context.Context, sel ast.SelectionSet, obj *model.Wish) graphql.Marshaler {
@@ -3893,6 +4038,56 @@ func (ec *executionContext) _Wish(ctx context.Context, sel ast.SelectionSet, obj
 					}
 				}()
 				res = ec._Wish_fulfillers(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			})
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
+var wishesImplementors = []string{"Wishes"}
+
+func (ec *executionContext) _Wishes(ctx context.Context, sel ast.SelectionSet, obj *model.Wishes) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, wishesImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("Wishes")
+		case "query":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Wishes_query(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			})
+		case "count":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Wishes_count(ctx, field, obj)
 				if res == graphql.Null {
 					atomic.AddUint32(&invalids, 1)
 				}
@@ -4271,6 +4466,20 @@ func (ec *executionContext) marshalNUser2ᚖgithubᚗcomᚋryakoshᚋwishlistᚋ
 	return ec._User(ctx, sel, v)
 }
 
+func (ec *executionContext) marshalNUsers2githubᚗcomᚋryakoshᚋwishlistᚋlibᚋgraphᚋmodelᚐUsers(ctx context.Context, sel ast.SelectionSet, v model.Users) graphql.Marshaler {
+	return ec._Users(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNUsers2ᚖgithubᚗcomᚋryakoshᚋwishlistᚋlibᚋgraphᚋmodelᚐUsers(ctx context.Context, sel ast.SelectionSet, v *model.Users) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	return ec._Users(ctx, sel, v)
+}
+
 func (ec *executionContext) marshalNWish2githubᚗcomᚋryakoshᚋwishlistᚋlibᚋgraphᚋmodelᚐWish(ctx context.Context, sel ast.SelectionSet, v model.Wish) graphql.Marshaler {
 	return ec._Wish(ctx, sel, &v)
 }
@@ -4320,6 +4529,20 @@ func (ec *executionContext) marshalNWish2ᚖgithubᚗcomᚋryakoshᚋwishlistᚋ
 		return graphql.Null
 	}
 	return ec._Wish(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNWishes2githubᚗcomᚋryakoshᚋwishlistᚋlibᚋgraphᚋmodelᚐWishes(ctx context.Context, sel ast.SelectionSet, v model.Wishes) graphql.Marshaler {
+	return ec._Wishes(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNWishes2ᚖgithubᚗcomᚋryakoshᚋwishlistᚋlibᚋgraphᚋmodelᚐWishes(ctx context.Context, sel ast.SelectionSet, v *model.Wishes) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	return ec._Wishes(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalN__Directive2githubᚗcomᚋ99designsᚋgqlgenᚋgraphqlᚋintrospectionᚐDirective(ctx context.Context, sel ast.SelectionSet, v introspection.Directive) graphql.Marshaler {
@@ -4577,6 +4800,38 @@ func (ec *executionContext) unmarshalOString2string(ctx context.Context, v inter
 
 func (ec *executionContext) marshalOString2string(ctx context.Context, sel ast.SelectionSet, v string) graphql.Marshaler {
 	return graphql.MarshalString(v)
+}
+
+func (ec *executionContext) unmarshalOString2ᚕstringᚄ(ctx context.Context, v interface{}) ([]string, error) {
+	var vSlice []interface{}
+	if v != nil {
+		if tmp1, ok := v.([]interface{}); ok {
+			vSlice = tmp1
+		} else {
+			vSlice = []interface{}{v}
+		}
+	}
+	var err error
+	res := make([]string, len(vSlice))
+	for i := range vSlice {
+		res[i], err = ec.unmarshalNString2string(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
+func (ec *executionContext) marshalOString2ᚕstringᚄ(ctx context.Context, sel ast.SelectionSet, v []string) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := make(graphql.Array, len(v))
+	for i := range v {
+		ret[i] = ec.marshalNString2string(ctx, sel, v[i])
+	}
+
+	return ret
 }
 
 func (ec *executionContext) unmarshalOString2ᚖstring(ctx context.Context, v interface{}) (*string, error) {

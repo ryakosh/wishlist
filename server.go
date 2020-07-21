@@ -39,10 +39,8 @@ func calcComplexity(complexityRoot *generated.ComplexityRoot) {
 		return (childComplexity * limit) + defaultRequestComplexity
 	}
 
-	complexityRoot.User.Friends = calcUsersComplexity
-	complexityRoot.User.FriendRequests = calcUsersComplexity
-	complexityRoot.Wish.FulfillmentClaimers = calcUsersComplexity
-	complexityRoot.Wish.Fulfillers = calcUsersComplexity
+	complexityRoot.Users.Query = calcUsersComplexity
+	complexityRoot.Wishes.Query = calcUsersComplexity
 }
 
 func playgroundHandler() gin.HandlerFunc {
