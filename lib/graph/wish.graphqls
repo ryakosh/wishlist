@@ -1,0 +1,35 @@
+type Wish {
+  id: Int!
+  owner: User!
+  name: String!
+  description: String!
+  link: String!
+  image: String!
+  fulfillmentClaimers: Users!
+  fulfillers: Users!
+}
+
+type Wishes {
+  query(page: Int! =  1, limit: Int! = 10): [Wish!]!
+  count: Int! @goField(forceResolver: true)
+}
+
+input NewWish {
+  name: String!
+  description: String! = ""
+  link: String! = ""
+  image: String! = ""
+}
+
+input UpdateWish {
+  id: Int!
+  name: String! = ""
+  description: String! = ""
+  link: String! = ""
+  image: String! = ""
+}
+
+input FulfillmentClaimer {
+    wishId: Int!
+    claimerId: String!
+}

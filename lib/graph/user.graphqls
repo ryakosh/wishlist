@@ -1,0 +1,31 @@
+type User {
+  id: String!
+  firstName: String
+  lastName: String
+  wishes: Wishes!
+  friends: Users!
+  friendRequests: Users!
+}
+
+type Users {
+  query(page: Int! =  1, limit: Int! = 10): [User!]! @authRequired
+  count: Int! @goField(forceResolver: true) # TODO: Reconsider authentication
+}
+
+input NewUser {
+  id: String!
+  firstName: String
+  lastName: String
+  email: String!
+  password: String!
+}
+
+input UpdateUser {
+  firstName: String
+  lastName: String
+}
+
+input Login {
+  id: String!
+  password: String!
+}

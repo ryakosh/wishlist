@@ -1,0 +1,7 @@
+secrets/
+*.log
+tmp/
+.gitignore
+env.list
+postfix/
+postgres/

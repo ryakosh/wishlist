@@ -1,0 +1,29 @@
+directive @goModel(model: String, models: [String!]) on OBJECT | INPUT_OBJECT | SCALAR | ENUM | INTERFACE | UNION
+directive @goField(forceResolver: Boolean, name: String) on INPUT_FIELD_DEFINITION | FIELD_DEFINITION
+directive @authRequired on FIELD_DEFINITION
+directive @emailVerificationRequired on FIELD_DEFINITION
+
+type Query {
+  user(id: String!): User!
+  wish(id: Int!): Wish!
+}
+
+type Mutation {
+  createUser(input: NewUser!): User!
+  updateUser(input: UpdateUser!): User! @authRequired
+  deleteUser: String!
+  genToken(input: Login!): String!
+  verifyEmail(code: String!): Boolean! @authRequired
+  sendFriendRequest(id: String!): User! @emailVerificationRequired @authRequired
+  unSendFriendRequest(id: String!): User! @emailVerificationRequired @authRequired
+  acceptFriendRequest(id: String!): User! @emailVerificationRequired @authRequired
+  rejectFriendRequest(id: String!): User! @emailVerificationRequired @authRequired
+
+  createWish(input: NewWish!): Wish! @emailVerificationRequired @authRequired
+  updateWish(input: UpdateWish!): Wish! @emailVerificationRequired @authRequired
+  deleteWish(id: Int!): Int! @emailVerificationRequired @authRequired
+  addWantToFulfill(id: Int!): Wish! @emailVerificationRequired @authRequired
+  claimFulfillment(id: Int!): Wish! @emailVerificationRequired @authRequired
+  acceptFulfillmentClaim(input: FulfillmentClaimer!): Wish! @emailVerificationRequired @authRequired
+  rejectFulfillmentClaim(input: FulfillmentClaimer!): Wish! @emailVerificationRequired @authRequired
+}
