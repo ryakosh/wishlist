@@ -181,33 +181,25 @@ func AuthedUserFromCtx(ctx context.Context) string {
 	return c
 }
 
-// // RequireEmailVerification is a middleware that is used to
-// // indicate that a user's email address must be verified in order
-// // to access this endpoint, it should be called after the Authenticate
-// // middleware
-// func RequireEmailVerification() gin.HandlerFunc {
-// 	return func(c *gin.Context) {
-// 		authedUser, ok := c.Get(UserKey)
-// 		if !ok {
-// 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
-// 				"error": ErrUserNotAuthorized.Error(),
-// 			})
-// 			return
-// 		}
+// EmailVerificationRequired is a middleware that is used to
+// indicate that a user's email address must be verified in order
+// to access this endpoint, it should be called after the Authenticate
+// middleware
+func EmailVerificationRequired(ctx context.Context, obj interface{}, next graphql.Resolver) (interface{}, error) {
+	var user User
+	authedUser := AuthedUserFromCtx(ctx)
 
-// 		var user User
-// 		db := db.DB.Select("is_email_verified").Where("id = ?", authedUser).First(&user)
-// 		if db.Error != nil && !gorm.IsRecordNotFoundError(db.Error) {
-// 			lib.LogError(lib.LPanic, "Could not read user", db.Error)
-// 		}
+	d := db.DB.Select("is_email_verified").Where("id = ?", authedUser).First(&user)
+	if d.Error != nil && !gorm.IsRecordNotFoundError(d.Error) {
+		lib.LogError(lib.LPanic, "Could not read user", d.Error)
+	}
 
-// 		if !user.IsEmailVerified {
-// 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
-// 				"error": ErrUserNotAuthorized.Error(),
-// 			})
-// 		}
-// 	}
-// }
+	if !user.IsEmailVerified {
+		return nil, ErrUserNotAuthorized
+	}
+
+	return next(ctx)
+}
 
 func init() {
 	db.DB.AutoMigrate(&User{})

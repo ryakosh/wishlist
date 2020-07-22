@@ -26,6 +26,7 @@ var accessLog *log.Logger
 func graphqlHandler() gin.HandlerFunc {
 	config := generated.Config{Resolvers: &graph.Resolver{DB: db.DB}}
 	config.Directives.AuthRequired = dbmodel.AuthRequired
+	config.Directives.EmailVerificationRequired = dbmodel.EmailVerificationRequired
 	calcComplexity(&config.Complexity)
 
 	h := handler.NewDefaultServer(generated.NewExecutableSchema(config))
