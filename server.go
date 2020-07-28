@@ -7,6 +7,7 @@ import (
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/99designs/gqlgen/graphql/handler/extension"
 	"github.com/99designs/gqlgen/graphql/playground"
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/ryakosh/wishlist/lib"
 	"github.com/ryakosh/wishlist/lib/db"
@@ -96,6 +97,15 @@ func initLogs() {
 	accessLog = log.New(accessLogFile, "", log.LstdFlags)
 }
 
+func corsM() gin.HandlerFunc {
+	return cors.New(cors.Config{
+		AllowOrigins:     []string{"http://localhost:3000"},
+		AllowMethods:     []string{"POST"},
+		AllowHeaders:     []string{"Content-Type"},
+		AllowCredentials: true,
+	})
+}
+
 func main() {
 	port := os.Getenv("PORT")
 	if port == "" {
@@ -103,6 +113,7 @@ func main() {
 	}
 
 	r := gin.Default()
+	r.Use(corsM())
 	r.Use(accessLogger(), lib.GinCtxToCtx())
 	r.POST("/query", graphqlHandler())
 	r.GET("/", playgroundHandler())

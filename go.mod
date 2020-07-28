@@ -11,15 +11,14 @@ require (
 	github.com/alexedwards/argon2id v0.0.0-20200522061839-9369edc04b05
 	github.com/andybalholm/cascadia v1.2.0 // indirect
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
+	github.com/gin-contrib/cors v1.3.1
 	github.com/gin-gonic/gin v1.6.3
-	github.com/go-gin/gin v0.0.0-20161108173721-bb159f9260a2
 	github.com/go-playground/validator/v10 v10.3.0
 	github.com/google/uuid v1.1.1 // indirect
 	github.com/huandu/xstrings v1.3.2 // indirect
 	github.com/imdario/mergo v0.3.9 // indirect
 	github.com/jaytaylor/html2text v0.0.0-20200412013138-3577fbdbcff7 // indirect
 	github.com/jinzhu/gorm v1.9.12
-	github.com/manucorporat/sse v0.0.0-20160126180136-ee05b128a739 // indirect
 	github.com/matcornic/hermes/v2 v2.1.0
 	github.com/mattn/go-runewidth v0.0.9 // indirect
 	github.com/mitchellh/copystructure v1.0.0 // indirect
